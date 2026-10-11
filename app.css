@@ -34,6 +34,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{background:var(--bg);color:var(--fg);-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}
+*{touch-action:manipulation}
 body{margin:0;background:transparent;font-family:var(--body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
 button,a,.habit,label{-webkit-tap-highlight-color:transparent}
 button{-webkit-user-select:none;user-select:none;touch-action:manipulation}
@@ -144,6 +145,10 @@ input,select,textarea{font-size:16px;background:var(--sunk);border:1.5px solid t
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);background:var(--surface);box-shadow:0 0 0 4px color-mix(in srgb,var(--blue) 18%,transparent)}
 input[type=checkbox]{width:22px;height:22px;min-height:0;padding:0;accent-color:var(--red);flex:none}
 input[type=file]{background:none;border:0;padding:0;min-height:0;font-size:14px}
+/* En iPhone los campos de fecha y hora traen un ancho propio que se salía de la pantalla */
+input[type=date],input[type=time],input[type=month]{-webkit-appearance:none;appearance:none;display:block;max-width:100%;text-align:left;line-height:1.4}
+input::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
+label,form.row>*{min-width:0}
 input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 75%,transparent)}
 textarea{min-height:96px;resize:vertical}
 form.row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));align-items:end}
@@ -271,7 +276,7 @@ body.down .fab .lbl{max-width:0;opacity:0}
 
 /* Ventanas que suben desde abajo */
 .sheet-bg{position:fixed;inset:0;background:rgba(8,10,14,.5);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);z-index:40;display:flex;align-items:flex-end;justify-content:center;animation:bgin .3s ease both}
-.sheet{background:var(--surface);width:100%;max-width:540px;border-radius:28px 28px 0 0;padding:12px 18px calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:12px;max-height:92%;overflow:auto;box-shadow:0 -20px 50px -20px rgba(0,0,0,.5);animation:sheetin .55s cubic-bezier(.2,1.05,.3,1) backwards;overscroll-behavior:contain}
+.sheet{background:var(--surface);width:100%;max-width:540px;border-radius:28px 28px 0 0;padding:12px 18px calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:12px;max-height:92%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;box-shadow:0 -20px 50px -20px rgba(0,0,0,.5);animation:sheetin .55s cubic-bezier(.2,1.05,.3,1) backwards;overscroll-behavior:contain}
 .sheet::before{content:"";width:42px;height:5px;border-radius:9px;background:var(--line);justify-self:center;margin-bottom:2px}
 .sheet-bg.closing{animation:bgout .24s ease both;pointer-events:none}
 .sheet-bg.closing .sheet{animation:sheetout .24s ease-in forwards}
@@ -300,6 +305,68 @@ nav.tabs button svg{width:23px;height:23px}
 nav.tabs button.on{color:#fff}
 nav.tabs button.on svg{animation:hop .55s var(--spring)}
 @keyframes hop{0%{transform:translateY(0) scale(1)}40%{transform:translateY(-5px) scale(1.15)}100%{transform:none}}
+
+/* Panel del dueño (solo cuentas de dueño lo ven; la seguridad está en la base de datos) */
+[data-owner]{display:none!important}
+body.is-owner [data-owner]{display:grid!important}
+.mini-acts{display:flex;align-items:center;gap:2px}
+.gear.crown{color:#D08A00}
+.gear.crown:hover svg,.gear.crown:active svg{transform:scale(1.12) rotate(-8deg)}
+.own-chip{display:none}
+body.owner .top #sync{display:none}
+body.owner .own-chip{display:inline-flex}
+.own-chip i{background:#F2A33A!important}
+body.owner .gear.crown{background:linear-gradient(140deg,#F7C548,#E07A12);color:#fff;border-color:transparent;box-shadow:0 10px 22px -10px rgba(224,122,18,.85)}
+body.owner .crown-x{color:#E07A12}
+body.owner .fab{display:none!important}
+body.owner .ind{background:linear-gradient(140deg,#F2B33D,#E07A12);box-shadow:0 10px 20px -8px rgba(224,122,18,.8)}
+body.owner .top h1 span,body.owner .mini b span{background:linear-gradient(100deg,#F5B83D,#E8601C);-webkit-background-clip:text;background-clip:text;color:transparent}
+.badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;font-weight:800;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--bg);animation:badgein .5s var(--spring) both;z-index:2}
+nav.tabs button .badge{top:2px;right:calc(50% - 25px)}
+@keyframes badgein{from{transform:scale(0)}}
+.od-hero .od-big{font-family:var(--display);font-size:88px;line-height:.9;margin:8px 0 6px;color:#fff}
+.od-hero .note b{color:#fff}
+.od-spark{display:flex;align-items:flex-end;gap:3px;height:72px;margin-top:18px}
+.od-spark i{flex:1;min-width:0;border-radius:4px 4px 2px 2px;background:rgba(255,255,255,.16)}
+.od-spark i.on{background:linear-gradient(180deg,#FFD166,#E0283E);box-shadow:0 0 12px rgba(255,107,125,.5)}
+.od-axis{display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.55);margin-top:7px}
+.od-tap{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%;display:block;transition:transform .2s var(--spring)}
+.od-tap:active{transform:scale(.97)}
+.od-bar{display:grid;gap:6px;margin-bottom:14px}
+.od-bl{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.od-bl b{display:flex;align-items:center;gap:8px}
+.od-mini b{font-family:var(--display);font-size:32px;font-weight:400;display:block;line-height:1.1}
+.od-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap}
+.od-searchcard{display:grid;gap:12px}
+.od-user{width:100%;background:none;border:0;border-top:1px solid var(--line);font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:0;transition:background .2s}
+.od-user:first-child{border-top:0}
+.od-user:active{background:var(--sunk)}
+.od-mail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chev{color:var(--muted);font-size:24px;line-height:1;flex:none}
+.av{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;flex:none;font-weight:800;color:#fff;font-size:17px;background:linear-gradient(140deg,var(--c),color-mix(in srgb,var(--c) 55%,#000));box-shadow:0 6px 14px -6px var(--c)}
+.av.lg{width:62px;height:62px;font-size:26px}
+.od-kv .li{justify-content:space-between;padding:10px 0}
+.od-kv b{text-align:right;font-size:14px}
+.od-warn{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border-radius:var(--r-sm);padding:10px 12px;font-weight:600;font-size:14px}
+.od-seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+.od-seg button{padding:9px 4px}
+.od-seg .cnt{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--red);color:#fff;font-size:12px;line-height:20px;margin-left:4px}
+.od-tools>.od-tool:last-child:nth-child(odd){grid-column:1/-1}
+.od-mh{display:flex;gap:12px;align-items:center;min-width:0}
+.od-mh .grow{min-width:0;flex:1}
+.od-mh .s{font-size:13px}
+.od-mt{margin:12px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;background:var(--sunk);border-radius:14px;padding:12px 14px}
+.od-ma{display:flex;gap:8px;flex-wrap:wrap}
+.od-msg.done{opacity:.7}
+.od-new{color:#fff;background:var(--red)}
+.od-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.od-tool{display:grid;gap:3px;align-content:start;text-decoration:none;color:inherit;padding:14px;transition:transform .2s var(--spring),box-shadow .2s}
+.od-tool:active{transform:scale(.96)}
+.od-tool b{font-size:15px;line-height:1.2;padding-right:14px}
+.od-tool .s{font-size:12.5px;color:var(--muted);line-height:1.3}
+.od-ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent);margin-bottom:8px}
+.od-ic svg{width:21px;height:21px}
+.od-go{position:absolute;top:12px;right:14px;color:var(--muted);font-weight:800}
 
 /* Despertador a pantalla completa */
 .overlay{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));gap:14px;user-select:none;-webkit-user-select:none;touch-action:manipulation}

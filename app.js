@@ -198,20 +198,31 @@ const ICONS={
   habitos:'<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>',
   dinero:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/>',
   claude:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
-  semana:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'
+  semana:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  'd-resumen':'<path d="M3 20h18"/><path d="M6.5 16v-4M11 16V7M15.5 16v-6M20 16V4"/>',
+  'd-usuarios':'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
+  'd-mensajes':'<path d="M21 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.4-5A8.5 8.5 0 1 1 21 12z"/>',
+  'd-herr':'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+  'd-salir':'<path d="M10 18l-6-6 6-6M4 12h16"/>'
 };
-const TABS=[['inicio','Inicio'],['habitos','Hábitos'],['dinero','Dinero'],['claude','Proyectos'],['semana','Semana']];
-const TITLES={inicio:['Mi','Esquina'],habitos:['Tus','Hábitos'],dinero:['Tu','Plata'],claude:['Tus','Proyectos'],semana:['Tu','Semana']};
+const USER_TABS=[['inicio','Inicio'],['habitos','Hábitos'],['dinero','Dinero'],['claude','Proyectos'],['semana','Semana']];
+const OWNER_TABS=[['d-resumen','Resumen'],['d-usuarios','Usuarios'],['d-mensajes','Mensajes'],['d-herr','Enlaces'],['d-salir','Mi app']];
+let TABS=USER_TABS;
+const TITLES={inicio:['Mi','Esquina'],habitos:['Tus','Hábitos'],dinero:['Tu','Plata'],claude:['Tus','Proyectos'],semana:['Tu','Semana'],
+  'd-resumen':['Panel del','Dueño'],'d-usuarios':['Tu','Gente'],'d-mensajes':['Tus','Mensajes'],'d-herr':['Tus','Herramientas']};
 let tab='inicio', moneyMonth=monthKey(today()), txType='gasto';
 function drawTabs(){
-  $('#tabs').innerHTML=TABS.map(([k,n])=>`<button data-tab="${k}" class="${k===tab?'on':''}" aria-current="${k===tab?'page':'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>${n}</button>`).join('');
+  const pend=owner&&OD.resumen?OD.resumen.mensajes.pendientes:0;
+  $('#tabs').innerHTML=TABS.map(([k,n])=>`<button data-tab="${k}" class="${k===tab?'on':''}" aria-current="${k===tab?'page':'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>${n}${k==='d-mensajes'&&pend?`<span class="badge num" aria-label="${pend} por responder">${pend}</span>`:''}</button>`).join('');
   $('#tab-ind').style.setProperty('--i',Math.max(0,TABS.findIndex(x=>x[0]===tab)));
 }
 let slideDir='';
 function go(t){
-  if(t===tab){window.scrollTo({top:0,behavior:RM?'auto':'smooth'});return}
+  if(t==='d-salir')return ownerMode&&leaveOwner();
+  if(t===tab){window.scrollTo({top:0,behavior:RM?'auto':'smooth'});if(ownerMode)odRefresh();return}
   const a=TABS.findIndex(x=>x[0]===tab),b=TABS.findIndex(x=>x[0]===t);slideDir=b>a?'l':'r';
-  entering=true;tab=t;drawTabs();render();window.scrollTo(0,0);try{localStorage.setItem('esquina.tab',t)}catch(e){}
+  entering=true;tab=t;drawTabs();render();window.scrollTo(0,0);
+  if(ownerMode){if(Date.now()-(odAt[OD_NEED[t]]||0)>60000)odLoad(OD_NEED[t],true)}else try{localStorage.setItem('esquina.tab',t)}catch(e){}
 }
 
 const prevRing={};
@@ -533,7 +544,7 @@ function render(){
   const v=$('#view');
   if(revealIO){revealIO.disconnect();revealIO=null}
   if(loadingView){v.innerHTML='<div class="skel" aria-label="Cargando tus datos"><i></i><i></i><i></i></div>';return}
-  v.innerHTML=VIEWS[tab]();animateWater();
+  const V=ownerMode?OVIEWS:VIEWS;v.innerHTML=(V[tab]||Object.values(V)[0])();animateWater();
   requestAnimationFrame(()=>requestAnimationFrame(()=>v.querySelectorAll('.rprog').forEach(c=>c.style.strokeDashoffset=c.dataset.to)));
   const counts=[...v.querySelectorAll('[data-count]')],ck=(el,i)=>tab+':'+(el.dataset.ck||i);
   if(entering){entering=false;
@@ -577,9 +588,11 @@ function flyAt(sel,text,color){
 }
 /* confeti y chispas */
 const FX=(()=>{let cv,cx,parts=[],raf=0;
-  function size(){const d=window.devicePixelRatio||1;cv.width=innerWidth*d;cv.height=innerHeight*d;cx.setTransform(d,0,0,d,0,0)}
+  // Mide la pantalla completa aunque la página esté acercada con los dedos; si no, el confeti dejaba rayas
+  const vw=()=>document.documentElement.clientWidth||innerWidth,vh=()=>document.documentElement.clientHeight||innerHeight;
+  function size(){const d=window.devicePixelRatio||1;cv.width=vw()*d;cv.height=vh()*d;cx.setTransform(d,0,0,d,0,0)}
   function ensure(){if(cv)return;cv=document.createElement('canvas');cv.className='fx';document.body.appendChild(cv);cx=cv.getContext('2d');size();addEventListener('resize',size)}
-  function loop(){cx.clearRect(0,0,innerWidth,innerHeight);parts=parts.filter(p=>p.life>0);
+  function loop(){cx.save();cx.setTransform(1,0,0,1,0,0);cx.clearRect(0,0,cv.width,cv.height);cx.restore();parts=parts.filter(p=>p.life>0);
     for(const p of parts){p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.vx*=.985;p.rot+=p.vr;p.life--;cx.save();cx.globalAlpha=Math.min(1,p.life/30);cx.translate(p.x,p.y);cx.rotate(p.rot);cx.fillStyle=p.c;
       if(p.circle){cx.beginPath();cx.arc(0,0,p.s/2,0,7);cx.fill()}else cx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);cx.restore()}
     raf=parts.length?requestAnimationFrame(loop):0}
@@ -587,11 +600,258 @@ const FX=(()=>{let cv,cx,parts=[],raf=0;
   return{
     burst(x,y,c,n=18){if(RM)return;ensure();for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,v=2+Math.random()*4.5;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.5,g:.2,s:4+Math.random()*5,c,rot:0,vr:(Math.random()-.5)*.4,life:40+Math.random()*25,circle:Math.random()<.5})}run()},
     rain(){if(RM)return;ensure();const cols=['#D3263A','#2155D6','#15897A','#C77A00','#8A3FD1','#1E90D6','#F4F4F2'];
-      for(let i=0;i<150;i++)parts.push({x:Math.random()*innerWidth,y:-20-Math.random()*innerHeight*.6,vx:(Math.random()-.5)*3,vy:2+Math.random()*3,g:.05,s:6+Math.random()*7,c:cols[i%cols.length],rot:Math.random()*6,vr:(Math.random()-.5)*.3,life:170+Math.random()*90});run()}
+      for(let i=0;i<150;i++)parts.push({x:Math.random()*vw(),y:-20-Math.random()*vh()*.6,vx:(Math.random()-.5)*3,vy:2+Math.random()*3,g:.05,s:6+Math.random()*7,c:cols[i%cols.length],rot:Math.random()*6,vr:(Math.random()-.5)*.3,life:170+Math.random()*90});run()}
   }})();
 function burstAt(sel){const el=document.querySelector(sel);if(!el)return;const r=el.getBoundingClientRect();FX.burst(r.left+r.width/2,r.top+r.height/2,getComputedStyle(el).borderTopColor||'#D3263A')}
 function safeUrl(u){return /^https?:\/\//i.test(String(u||'').trim())?String(u).trim().slice(0,500):''}
 const num=v=>{const s=String(v||'').replace(/\s|\$/g,'');if(/,\d{1,2}$/.test(s))return parseFloat(s.replace(/\./g,'').replace(',','.'));return parseFloat(s.replace(/[.,](?=\d{3}(\D|$))/g,'').replace(',','.'))||0};
+
+/* ---------- panel del dueño ----------
+   Solo para cuentas marcadas como dueño en la base de datos (dueno_privado.duenos).
+   La seguridad está en Supabase: estas funciones responden "no autorizado" a cualquier otra cuenta.
+   Muestra números generales y datos de la cuenta, nunca lo que cada persona anota (así lo dice la política de privacidad). */
+const ICON_CROWN='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l4.5 4.2L12 5l4.5 7.2L21 8l-1.8 10.5H4.8z"/><path d="M5 21.5h14"/></svg>';
+const OD_NEED={'d-resumen':'resumen','d-usuarios':'usuarios','d-mensajes':'mensajes','d-herr':'estado'};
+let owner=false,ownerMode=false,odQ='',odFil='pend',odUser=null;
+const OD={},odBusy={},odErr={},odAt={};
+const LINKS=[
+  ['Tu app',[
+    ['Página de inicio','La que ve la gente nueva','https://joacoquirozgb-ux.github.io/Mi-ESQUINA-/','var(--red)','<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
+    ['La app','Lo que usa tu gente','https://joacoquirozgb-ux.github.io/Mi-ESQUINA-/app.html','var(--a-empresa)','<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/>'],
+    ['Privacidad y términos','Lo que prometes','https://joacoquirozgb-ux.github.io/Mi-ESQUINA-/privacidad.html','var(--muted)','<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/>']]],
+  ['Base de datos y cuentas · Supabase',[
+    ['Panel del proyecto','Todo Mi Esquina','https://supabase.com/dashboard/project/hkhweiduvkggbzfdpiyk','var(--ok)','<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>'],
+    ['Cuentas','Quién se registró','https://supabase.com/dashboard/project/hkhweiduvkggbzfdpiyk/auth/users','var(--blue)','<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
+    ['Tablas','Los datos guardados','https://supabase.com/dashboard/project/hkhweiduvkggbzfdpiyk/editor','var(--a-contenido)','<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/>'],
+    ['Funciones','Crear y borrar cuentas, pagos','https://supabase.com/dashboard/project/hkhweiduvkggbzfdpiyk/functions','var(--warn)','<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'],
+    ['Registros','Errores y accesos','https://supabase.com/dashboard/project/hkhweiduvkggbzfdpiyk/logs/explorer','var(--a-salud)','<path d="M4 6h16M4 12h10M4 18h13"/>']]],
+  ['Código y publicación · GitHub',[
+    ['Repositorio','El código de la página','https://github.com/joacoquirozgb-ux/Mi-ESQUINA-','var(--fg)','<path d="M8 6l-6 6 6 6M16 6l6 6-6 6"/>'],
+    ['Publicaciones','Si la última versión salió bien','https://github.com/joacoquirozgb-ux/Mi-ESQUINA-/actions','var(--ok)','<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/>']]],
+  ['Tus páginas en Claude',[
+    ['Mi Esquina personal','Tu versión con despertador y atajos','https://claude.ai/artifact/SkNxNw3QM77sptahaM4RGT','var(--red)','<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
+    ['Página de venta','Lista de espera de Mi Esquina','https://claude.ai/artifact/TnK4exCQ9tmprrRhyb4kH7','var(--a-familia)','<path d="M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9h18M9 14h6"/>'],
+    ['Cotiza al Toque','Preventa del cotizador','https://claude.ai/artifact/8KAs71QugjFvW38rmN2ooJ','var(--blue)','<path d="M6 2.5h9l4 4V21.5H6z"/><path d="M14.5 2.5V7H19M9 12h7M9 16h5"/>']]]
+];
+const DOLOR={habitos:'Sus hábitos',plata:'Su plata',tiempo:'Su tiempo',todo:'Todo junto',sin:'Sin responder'};
+const PAGA={si:'Sí',quizas:'Quizás',no:'No',sin:'Sin responder'};
+const AV_COL=['#E0283E','#2B5CE6','#0F9D7A','#D98A00','#8A3FD1','#1E90D6','#E85D9A'];
+const avCol=id=>{let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;return AV_COL[h%AV_COL.length]};
+const initial=u=>esc(((u.nombre||u.email||'?').trim()[0]||'?').toUpperCase());
+const mailto=(to,subject,body)=>'mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(subject)+(body?'&body='+encodeURIComponent(body):'');
+function rel(iso){
+  if(!iso)return '';const d=new Date(iso),t=new Date();if(isNaN(d))return '';
+  const day=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate());const n=Math.round((day(t)-day(d))/864e5);
+  const hm=pad(d.getHours())+':'+pad(d.getMinutes());
+  if(n<=0)return 'hoy a las '+hm;if(n===1)return 'ayer a las '+hm;if(n<7)return 'hace '+n+' días';if(n<14)return 'hace 1 semana';if(n<31)return 'hace '+Math.floor(n/7)+' semanas';
+  return d.getDate()+' de '+MESES[d.getMonth()]+(d.getFullYear()!==t.getFullYear()?' de '+d.getFullYear():'');
+}
+const fullDate=iso=>{if(!iso)return 'Nunca';const d=new Date(iso);return isNaN(d)?'—':d.getDate()+' de '+MESES[d.getMonth()]+' de '+d.getFullYear()+', '+pad(d.getHours())+':'+pad(d.getMinutes())};
+async function callOwnerFn(body){
+  const {data:{session}}=await sb.auth.getSession();if(!session)return {error:'Tu sesión venció. Vuelve a entrar.'};
+  try{const r=await fetch(SB_URL+'/functions/v1/dueno-cuentas',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));return r.ok?{data:j}:{error:j.error||'No se pudo hacer. Inténtalo otra vez.'}}
+  catch(e){return {error:'Sin conexión. Inténtalo otra vez.'}}
+}
+async function odLoad(k,force){
+  if(!owner||!k||odBusy[k]||(OD[k]&&!force))return;
+  odBusy[k]=true;odErr[k]=false;const who=me,first=!OD[k];
+  const res=k==='estado'?await callOwnerFn({accion:'estado'}):await sb.rpc('dueno_'+k);
+  odBusy[k]=false;if(who!==me||!owner)return;
+  if(res.error){odErr[k]=true}else{OD[k]=res.data;odAt[k]=Date.now()}
+  if(k==='resumen')ownerBadges();
+  if(ownerMode&&(OD_NEED[tab]===k||tab==='d-herr')){if(first&&OD_NEED[tab]===k)entering=true;render()}
+}
+function odRefresh(){if(!ownerMode)return;odLoad('resumen',true);const k=OD_NEED[tab];if(k&&k!=='resumen')odLoad(k,true)}
+function ownerBadges(){
+  const n=OD.resumen?OD.resumen.mensajes.pendientes:0;
+  document.querySelectorAll('[data-owner]').forEach(b=>{b.querySelector('.badge')?.remove();if(n&&!ownerMode)b.insertAdjacentHTML('beforeend',`<span class="badge num">${n}</span>`)});
+  if(ownerMode)drawTabs();
+}
+async function checkOwner(){
+  const who=me;const {data,error}=await sb.rpc('es_dueno');if(who!==me)return;
+  owner=!error&&data===true;document.body.classList.toggle('is-owner',owner);
+  if(!owner)return;
+  odLoad('resumen');
+  let back=false;try{back=sessionStorage.getItem('esquina.dueno')==='1'}catch(e){}
+  if(back)enterOwner(true);
+}
+function enterOwner(quiet){
+  if(!owner||ownerMode)return;
+  ownerMode=true;TABS=OWNER_TABS;tab='d-resumen';slideDir='l';entering=true;
+  document.body.classList.add('owner');try{sessionStorage.setItem('esquina.dueno','1')}catch(e){}
+  drawTabs();render();window.scrollTo(0,0);ownerBadges();odRefresh();if(!quiet)toast('Panel del dueño');
+}
+function leaveOwner(){
+  ownerMode=false;TABS=USER_TABS;tab='inicio';slideDir='r';entering=true;
+  document.body.classList.remove('owner');try{sessionStorage.removeItem('esquina.dueno')}catch(e){}
+  try{const t=localStorage.getItem('esquina.tab');if(VIEWS[t])tab=t}catch(e){}
+  drawTabs();render();window.scrollTo(0,0);ownerBadges();
+}
+function ownerReset(){
+  owner=false;ownerMode=false;TABS=USER_TABS;odUser=null;odQ='';odFil='pend';
+  for(const o of [OD,odBusy,odErr,odAt])for(const k in o)delete o[k];
+  document.body.classList.remove('owner','is-owner');
+  const s=$('#od-sheet');if(s){s.hidden=true;$('#od-body').innerHTML=''}
+}
+/* Mientras carga muestra tarjetas grises; si falla, un botón para reintentar */
+function odWait(k){
+  if(!odErr[k])odLoad(k); // si falló, espera a que toque Reintentar en vez de reintentar sin parar
+  if(odErr[k]&&!odBusy[k])return `<div class="card"><div class="empty">No se pudo cargar. Revisa tu conexión.<br><button class="btn sm" type="button" data-od="retry" data-k="${k}" style="margin-top:10px">Reintentar</button></div></div>`;
+  return '<div class="skel" aria-label="Cargando"><i></i><i></i><i></i></div>';
+}
+function odBars(map,labels,cols,total){
+  return Object.keys(labels).filter(k=>k!=='sin'||map.sin).map((k,i)=>{const n=+map[k]||0,p=total?Math.round(n/total*100):0;
+    return `<div class="od-bar"><div class="od-bl"><b><span class="dot" style="background:${cols[i]}"></span>${labels[k]}</b><span class="num muted">${n} · ${p}%</span></div><div class="bar"><i style="width:${p}%;background:${cols[i]}"></i></div></div>`}).join('');
+}
+function vOResumen(){
+  const r=OD.resumen;if(!r)return odWait('resumen');
+  const u=r.usuarios,N=+u.total||0,alt=r.altas||[],mx=Math.max(1,...alt.map(a=>+a.n||0));
+  const P=+r.perfiles||0,uso=r.uso||{},cot=r.cotizador||{},pend=+r.mensajes.pendientes||0;
+  const at=odAt.resumen?new Date(odAt.resumen):new Date();
+  return `
+  <div class="card hero od-hero">
+    <div class="eyebrow">Personas en Mi Esquina</div>
+    <div class="od-big num" data-count="${N}" data-ck="tot">${N}</div>
+    <div class="note"><b class="num">+${u.hoy}</b> hoy · <b class="num">+${u.semana}</b> esta semana · <b class="num">+${u.mes}</b> en 30 días</div>
+    <div class="od-spark" aria-label="Cuentas nuevas por día, últimos 30 días">${alt.map((a,i)=>`<i class="wb${a.n?' on':''}" style="--d:${(i/3).toFixed(1)};height:${a.n?Math.max(14,a.n/mx*100):5}%"></i>`).join('')}</div>
+    <div class="od-axis"><span>Hace 30 días</span><span>Hoy</span></div>
+  </div>
+  <div class="grid g3" style="margin-top:12px">
+    <div class="card tint" style="--c:var(--ok)"><h2>Activas esta semana</h2><div class="big num" data-count="${+r.activos7||0}" data-ck="act">${+r.activos7||0}</div><div class="note">de ${N} ${N===1?'persona':'personas'} usaron la app</div></div>
+    <button class="card tint od-tap" type="button" data-tab="d-mensajes" style="--c:${pend?'var(--red)':'var(--blue)'}"><h2>Por responder</h2><div class="big num" data-count="${pend}" data-ck="pend">${pend}</div><div class="note">${pend?'Toca para leerlos':'Todo al día'} ›</div></button>
+    <div class="card tint wide" style="--c:var(--a-contenido)"><h2>Activas este mes</h2><div class="big num" data-count="${+r.activos30||0}" data-ck="act30">${+r.activos30||0}</div><div class="note">${u.suspendidas?u.suspendidas+(u.suspendidas===1?' cuenta suspendida':' cuentas suspendidas'):'Ninguna cuenta suspendida'}</div></div>
+  </div>
+  <div class="sec"><div class="sec-h"><h3>¿Pagarían $2.990?</h3><span class="muted num">${P} ${P===1?'respuesta':'respuestas'}</span></div>
+    <div class="card">${P?odBars(r.pagaria||{},PAGA,['var(--ok)','var(--warn)','var(--red)','var(--muted)'],P):'<div class="empty">Aún nadie responde la encuesta del registro.</div>'}</div></div>
+  <div class="sec"><div class="sec-h"><h3>Lo que más les cuesta</h3></div>
+    <div class="card">${P?odBars(r.dolor||{},DOLOR,['var(--a-deporte)','var(--a-empresa)','var(--blue)','var(--a-contenido)','var(--muted)'],P):'<div class="empty">Sin respuestas todavía.</div>'}</div></div>
+  <div class="sec"><div class="sec-h"><h3>Qué usan</h3><span class="note">Personas que ya anotaron algo</span></div>
+    <div class="card">${[['habitos','Hábitos','var(--red)'],['agua','Agua','var(--water)'],['despertar','Despertador','var(--a-contenido)'],['dinero','Dinero','var(--ok)'],['proyectos','Proyectos','var(--a-empresa)'],['semana','Semana','var(--blue)']].map(([k,n,c])=>{const v=+uso[k]||0,p=N?Math.round(v/N*100):0;
+      return `<div class="od-bar"><div class="od-bl"><b><span class="dot" style="background:${c}"></span>${n}</b><span class="num muted">${v} de ${N}</span></div><div class="bar"><i style="width:${p}%;background:${c}"></i></div></div>`}).join('')}
+      <div class="note">Solo cuentas personas. Lo que cada una anota es privado y no se muestra.</div></div></div>
+  <div class="sec"><div class="sec-h"><h3>Cotiza al Toque</h3><span class="note">Mismo servidor, otra app</span></div>
+    <div class="card"><div class="grid g3 od-mini">
+      <div><div class="eyebrow">Negocios</div><b class="num" data-count="${+cot.negocios||0}" data-ck="cn">${+cot.negocios||0}</b></div>
+      <div><div class="eyebrow">Cotizaciones</div><b class="num" data-count="${+cot.cotizaciones||0}" data-ck="cc">${+cot.cotizaciones||0}</b></div>
+      <div class="wide"><div class="eyebrow">Pagando</div><b class="num" data-count="${+cot.activas||0}" data-ck="ca">${+cot.activas||0}</b></div></div></div></div>
+  <div class="od-foot"><span class="note">Actualizado a las ${pad(at.getHours())}:${pad(at.getMinutes())}</span><button class="btn sm" type="button" data-od="refresh">Actualizar</button></div>`;
+}
+function odFiltered(){
+  const q=odQ.trim().toLowerCase(),L=OD.usuarios||[];
+  return q?L.filter(u=>(u.nombre||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)):L;
+}
+function odUserRows(){
+  const L=odFiltered();
+  if(!L.length)return `<div class="empty">${odQ?'Nadie coincide con esa búsqueda.':'Todavía no hay cuentas.'}</div>`;
+  return L.map(u=>`<button class="li od-user" type="button" data-od="user" data-id="${esc(u.id)}"><span class="av" style="--c:${avCol(u.id)}">${initial(u)}</span><div class="grow"><div class="t">${esc(u.nombre||'Sin nombre')}${u.dueno?' <span class="chip">Tú</span>':''}${u.suspendida?' <span class="chip" style="color:var(--red)">Suspendida</span>':''}</div><div class="s od-mail">${esc(u.email)}</div><div class="s">Se unió ${rel(u.creado)}${u.actividad?' · activa '+rel(u.actividad):' · aún sin usarla'}</div></div><span class="chev" aria-hidden="true">›</span></button>`).join('');
+}
+const odCount=()=>{const n=odFiltered().length;return n+(n===1?' cuenta':' cuentas')};
+function vOUsuarios(){
+  if(!OD.usuarios)return odWait('usuarios');
+  return `
+  <div class="card od-searchcard"><input id="od-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Buscar por nombre o email" value="${esc(odQ)}" aria-label="Buscar cuentas">
+    <div class="od-foot" style="margin:0"><span class="muted num" id="od-count">${odCount()}</span><button class="btn sm" type="button" data-od="csv">Descargar lista</button></div></div>
+  <div class="card" style="margin-top:12px"><div class="list" id="od-list">${odUserRows()}</div></div>
+  <div class="note" style="margin-top:10px;text-align:center">Ves los datos de cada cuenta y lo que respondió al registrarse. Lo que anota en la app es solo suyo.</div>`;
+}
+function vOMensajes(){
+  if(!OD.mensajes)return odWait('mensajes');
+  const L=OD.mensajes,pend=L.filter(m=>!m.atendido).length;
+  const show=L.filter(m=>odFil==='all'||(odFil==='pend'?!m.atendido:m.atendido));
+  return `
+  <div class="seg od-seg" role="tablist"><button type="button" data-od="fil" data-v="pend" class="${odFil==='pend'?'on':''}">Pendientes${pend?` <span class="cnt num">${pend}</span>`:''}</button><button type="button" data-od="fil" data-v="done" class="${odFil==='done'?'on':''}">Atendidos</button><button type="button" data-od="fil" data-v="all" class="${odFil==='all'?'on':''}">Todos</button></div>
+  <div class="grid" style="margin-top:12px">${show.length?show.map(m=>{const who=m.nombre||m.email;const pw=/contraseñ/i.test(m.mensaje);return `
+    <div class="card od-msg${m.atendido?' done':''}">
+      <div class="od-mh"><span class="av" style="--c:${avCol(m.email)}">${initial(m)}</span><div class="grow"><b class="od-mail" style="display:block">${esc(who)}</b>${m.nombre?`<div class="s muted od-mail">${esc(m.email)}</div>`:''}<div class="s muted">${rel(m.creado)}${m.cuenta?'':' · escribió sin entrar'}</div></div>${m.atendido?'<span class="chip" style="color:var(--ok)">Atendido</span>':'<span class="chip od-new">Nuevo</span>'}</div>
+      <p class="od-mt">${esc(m.mensaje)}</p>
+      <div class="od-ma"><a class="btn sm pri" href="${esc(mailto(m.email,pw?'Tu cuenta en Mi Esquina':'Re: tu mensaje a Mi Esquina','Hola'+(m.nombre?' '+m.nombre.split(' ')[0]:'')+',\n\n'))}">Responder por correo</a><button class="btn sm" type="button" data-od="done" data-id="${+m.id}" data-v="${m.atendido?'0':'1'}">${m.atendido?'Volver a pendiente':'Marcar atendido'}</button></div>
+    </div>`}).join(''):`<div class="empty">${odFil==='pend'?'No hay mensajes por responder. 👊':'No hay mensajes aquí.'}</div>`}</div>`;
+}
+function vOHerr(){
+  const est=OD.estado;if(!odErr.estado)odLoad('estado');if(!odErr.resumen)odLoad('resumen');
+  const pend=OD.resumen?+OD.resumen.mensajes.pendientes||0:null;
+  const st=(ok,yes,no)=>`<span class="chip" style="color:${ok?'var(--ok)':'var(--warn)'}"><span class="dot" style="background:currentColor"></span>${ok?yes:no}</span>`;
+  return `
+  <div class="card"><h2>Estado</h2><div class="list">
+    <div class="li"><div class="grow"><div class="t">Mensajes</div><div class="s">Ayuda y "olvidé mi contraseña"</div></div>${pend===null?'<span class="chip">…</span>':st(!pend,'Al día',pend+' por responder')}</div>
+    <div class="li"><div class="grow"><div class="t">Pagos con Mercado Pago</div><div class="s">Para cobrar el cotizador</div></div>${!est?(odErr.estado?'<span class="chip">Sin datos</span>':'<span class="chip">…</span>'):st(est.pagos,'Listos','Falta conectar')}</div>
+  </div></div>
+  ${LINKS.map(([g,items])=>`<div class="sec"><div class="sec-h"><h3>${esc(g)}</h3></div><div class="od-tools">${items.map(([t,d,url,c,ic])=>`<a class="od-tool card" href="${esc(url)}" target="_blank" rel="noopener"><span class="od-ic" style="--c:${c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ic}</svg></span><b>${esc(t)}</b><span class="s">${esc(d)}</span><span class="od-go" aria-hidden="true">↗</span></a>`).join('')}</div></div>`).join('')}`;
+}
+const OVIEWS={'d-resumen':vOResumen,'d-usuarios':vOUsuarios,'d-mensajes':vOMensajes,'d-herr':vOHerr};
+function odSheetHTML(u){
+  return `
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+    <div style="display:flex;gap:14px;align-items:center;min-width:0"><span class="av lg" style="--c:${avCol(u.id)}">${initial(u)}</span><div style="min-width:0"><b class="disp" style="font-size:26px;text-transform:uppercase;display:block;line-height:1.05;overflow-wrap:anywhere">${esc(u.nombre||'Sin nombre')}</b><div class="muted od-mail" style="font-size:14px">${esc(u.email)}</div></div></div>
+    <button type="button" class="x" data-od="close" aria-label="Cerrar">×</button></div>
+  ${u.suspendida?'<div class="od-warn">Cuenta suspendida: no puede entrar hasta que la reactives. Sus datos siguen guardados.</div>':''}
+  <div class="list od-kv">
+    <div class="li"><span class="s">Se unió</span><b>${fullDate(u.creado)}</b></div>
+    <div class="li"><span class="s">Último ingreso</span><b>${fullDate(u.ingreso)}</b></div>
+    <div class="li"><span class="s">Usó la app</span><b>${u.actividad?rel(u.actividad):'Todavía no'}</b></div>
+    <div class="li"><span class="s">Le cuesta más</span><b>${u.dolor?DOLOR[u.dolor]||'—':'No respondió'}</b></div>
+    <div class="li"><span class="s">¿Pagaría $2.990?</span><b>${u.pagaria?PAGA[u.pagaria]||'—':'No respondió'}</b></div>
+    <div class="li"><span class="s">Llegó desde</span><b>${esc(u.origen||'Directo')}</b></div>
+  </div>
+  <a class="btn pri" href="${esc(mailto(u.email,'Mi Esquina','Hola'+(u.nombre?' '+u.nombre.split(' ')[0]:'')+',\n\n'))}">Escribirle un correo</a>
+  ${u.dueno?'<div class="note" style="text-align:center">Esta es tu cuenta de dueño. Para cambiarla usa Ajustes.</div>':`
+  <button class="btn" type="button" data-od="act" data-act="${u.suspendida?'reactivar':'suspender'}">${u.suspendida?'Reactivar cuenta':'Suspender cuenta'}</button>
+  <div class="note">${u.suspendida?'Podrá volver a entrar con su misma contraseña.':'No podrá entrar hasta que la reactives. No se borra nada.'}</div>
+  <form class="row" id="od-del" style="margin-top:6px"><label>Para borrar esta cuenta y todo lo que anotó, escribe BORRAR<input id="od-d" autocomplete="off" maxlength="10"></label><button class="btn red" type="submit">Borrar cuenta</button></form>`}`;
+}
+function openOdSheet(id){
+  const u=(OD.usuarios||[]).find(x=>x.id===id);if(!u)return;odUser=id;
+  $('#od-body').innerHTML=odSheetHTML(u);showSheet($('#od-sheet'));
+}
+function closeOdSheet(){const el=$('#od-sheet');odUser=null;hideSheet(el,()=>{if(el.hidden)$('#od-body').innerHTML=''})}
+function odRedraw(){if(!ownerMode)return;if(tab==='d-usuarios'){const l=$('#od-list');if(l){l.innerHTML=odUserRows();$('#od-count').textContent=odCount();return}}render()}
+function odCSV(){
+  const cell=v=>{let x=String(v??'');if(/^[=+\-@\t\r]/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"'};
+  const rows=[['Nombre','Email','Se unió','Último ingreso','Última vez que usó la app','Le cuesta más','Pagaría $2.990','Llegó desde','Suspendida']].concat(odFiltered().map(u=>[u.nombre,u.email,fullDate(u.creado),fullDate(u.ingreso),u.actividad?fullDate(u.actividad):'',u.dolor?DOLOR[u.dolor]:'',u.pagaria?PAGA[u.pagaria]:'',u.origen||'',u.suspendida?'Sí':'No']));
+  const blob=new Blob(['﻿'+rows.map(r=>r.map(cell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mi-esquina-cuentas-'+today()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+}
+document.addEventListener('click',async e=>{
+  if(!me)return;
+  if(e.target.closest('[data-owner]')){ownerMode?leaveOwner():enterOwner();return}
+  if(!owner)return;
+  const t=e.target.closest('[data-od]');if(!t)return;
+  const a=t.dataset.od;
+  if(a==='retry'){odLoad(t.dataset.k,true);render();return}
+  if(a==='refresh'){odRefresh();toast('Actualizando…');return}
+  if(a==='user'){openOdSheet(t.dataset.id);return}
+  if(a==='close'){closeOdSheet();return}
+  if(a==='csv'){odCSV();return}
+  if(a==='fil'){odFil=t.dataset.v;render();return}
+  if(a==='done'){
+    const id=+t.dataset.id,v=t.dataset.v==='1',m=(OD.mensajes||[]).find(x=>+x.id===id);if(!m)return;
+    m.atendido=v;if(OD.resumen)OD.resumen.mensajes.pendientes=Math.max(0,OD.resumen.mensajes.pendientes+(v?-1:1));ownerBadges();render();toast(v?'Marcado como atendido':'Vuelve a pendientes');
+    const {error}=await sb.rpc('dueno_marcar_mensaje',{p_id:id,p_atendido:v});
+    if(error){m.atendido=!v;odLoad('resumen',true);render();toast('No se pudo guardar. Inténtalo otra vez.')}
+    return;
+  }
+  if(a==='act'){
+    const id=odUser,u=(OD.usuarios||[]).find(x=>x.id===id);if(!u||t.disabled)return;const act=t.dataset.act;
+    t.disabled=true;t.textContent='Un momento…';
+    const res=await callOwnerFn({accion:act,user_id:id});
+    if(res.error){toast(res.error);if(odUser===id)openOdSheet(id);return}
+    u.suspendida=act==='suspender';toast(u.suspendida?'Cuenta suspendida':'Cuenta reactivada');odLoad('resumen',true);
+    if(odUser===id){$('#od-body').innerHTML=odSheetHTML(u)}odRedraw();return;
+  }
+});
+document.addEventListener('submit',async e=>{
+  if(e.target.id!=='od-del')return;e.preventDefault();
+  const id=odUser,u=(OD.usuarios||[]).find(x=>x.id===id);if(!u)return;
+  if(($('#od-d').value||'').trim().toUpperCase()!=='BORRAR')return toast('Escribe BORRAR para confirmar');
+  const b=e.target.querySelector('button');b.disabled=true;b.textContent='Borrando…';
+  const res=await callOwnerFn({accion:'borrar',user_id:id,confirmar:'BORRAR'});
+  if(res.error){b.disabled=false;b.textContent='Borrar cuenta';return toast(res.error)}
+  OD.usuarios=OD.usuarios.filter(x=>x.id!==id);closeOdSheet();toast('Cuenta borrada');odLoad('resumen',true);odRedraw();
+});
+document.addEventListener('input',e=>{if(e.target.id!=='od-q')return;odQ=e.target.value.slice(0,80);const l=$('#od-list');if(l){l.innerHTML=odUserRows();$('#od-count').textContent=odCount()}});
+$('#od-sheet').addEventListener('click',e=>{if(e.target.id==='od-sheet')closeOdSheet()});
+dragToClose($('#od-sheet'),closeOdSheet);
 
 /* ---------- eventos de la app ---------- */
 /* Onda bajo el dedo y un pulso corto de vibración (en Android) en cada botón */
@@ -602,7 +862,7 @@ document.addEventListener('pointerdown',e=>{
   try{navigator.vibrate&&navigator.vibrate(8)}catch(err){}
 },{passive:true});
 /* Al bajar aparece la barra compacta y el botón de gasto se achica; al subir vuelve */
-{let lastY=0,raf=0;addEventListener('scroll',()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const y=window.scrollY,b=document.body;
+{let lastY=0,raf=0;addEventListener('scroll',()=>{if(raf||document.body.dataset.lock!==undefined)return;raf=requestAnimationFrame(()=>{raf=0;const y=window.scrollY,b=document.body;
   b.classList.toggle('scrolled',y>120);if(Math.abs(y-lastY)>8){b.classList.toggle('down',y>lastY&&y>180);lastY=y}})},{passive:true})}
 document.addEventListener('click',e=>{
   if(!me)return;
@@ -649,7 +909,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('submit',e=>{
   const id=e.target.id;
-  if(e.target.closest('#auth')||e.target.closest('#settings'))return; // los manejan sus propias funciones
+  if(e.target.closest('#auth')||e.target.closest('#settings')||e.target.closest('#od-sheet'))return; // los manejan sus propias funciones
   e.preventDefault();if(!me)return;const v=s=>($('#'+s)||{}).value||'';
   if(id==='f-quick'){const amt=num(v('q-amt'));if(!(amt>0))return toast('Escribe el monto');const note=v('q-note').trim().slice(0,120);S.money.tx.push({id:uid(),type:'gasto',amt,cat:qCat,date:today(),note});if(note){S.money.merchants=S.money.merchants||{};S.money.merchants[mKey(note)]=qCat}save('money');closeQuick();toast('Gasto anotado: '+clp(amt));render();return}
   if(id==='f-alarm'){AL().time=isHM(v('al-time'))?v('al-time'):'06:30';AL().ex=v('al-ex');save('meta');toast('Despertador a las '+AL().time)}
@@ -702,11 +962,15 @@ function hashGasto(h){
 }
 function clearHash(){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
 function closeQuick(){hideSheet($('#sheet'));if(hashGasto())clearHash()}
-function showSheet(el){clearTimeout(el._t);el.classList.remove('closing');const sh=el.querySelector('.sheet');if(sh){sh.style.transform='';sh.style.transition=''}el.hidden=false}
+/* Con una hoja abierta la página de atrás queda quieta: en iPhone el dedo movía el fondo en vez de la hoja */
+function lockScroll(on){const b=document.body;
+  if(on){if(b.dataset.lock!==undefined)return;const y=window.scrollY;b.dataset.lock=y;Object.assign(b.style,{position:'fixed',top:-y+'px',left:'0',right:'0'})}
+  else{if(b.dataset.lock===undefined||[...document.querySelectorAll('.sheet-bg')].some(x=>!x.hidden))return;const y=+b.dataset.lock;delete b.dataset.lock;Object.assign(b.style,{position:'',top:'',left:'',right:''});window.scrollTo(0,y)}}
+function showSheet(el){clearTimeout(el._t);el.classList.remove('closing');const sh=el.querySelector('.sheet');if(sh){sh.style.transform='';sh.style.transition='';sh.scrollTop=0}el.hidden=false;lockScroll(true)}
 function hideSheet(el,cb){
   clearTimeout(el._t);
-  if(el.hidden||RM){el.hidden=true;el.classList.remove('closing');if(cb)cb();return}
-  el.classList.add('closing');el._t=setTimeout(()=>{el.hidden=true;el.classList.remove('closing');if(cb)cb()},230);
+  if(el.hidden||RM){el.hidden=true;el.classList.remove('closing');lockScroll(false);if(cb)cb();return}
+  el.classList.add('closing');el._t=setTimeout(()=>{el.hidden=true;el.classList.remove('closing');lockScroll(false);if(cb)cb()},230);
 }
 function dragToClose(bg,close){
   const sh=bg.querySelector('.sheet');let y0=null,dy=0;
@@ -724,7 +988,7 @@ $('#q-close').addEventListener('click',closeQuick);
 dragToClose($('#sheet'),closeQuick);
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeQuick();const b=e.target.closest('[data-qcat]');if(b){qCat=b.dataset.qcat;[...document.querySelectorAll('[data-qcat]')].forEach(x=>x.classList.toggle('on',x===b))}});
 $('#q-paste').addEventListener('input',e=>{const r=parseAviso(e.target.value);if(r.amt)$('#q-amt').value=r.amt.toLocaleString('es-CL');if(r.where)$('#q-note').value=r.where});
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#sheet').hidden)closeQuick();else if(!$('#settings').hidden)closeSettings()});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#od-sheet').hidden)closeOdSheet();else if(!$('#sheet').hidden)closeQuick();else if(!$('#settings').hidden)closeSettings()});
 window.addEventListener('hashchange',()=>{if(!me){const h=location.hash||'';if(hashGasto(h)||h==='#despertar'){pendingHash=h;authMsg('Entra para anotar tu gasto.')}return}const g=hashGasto();if(g)openQuick(g);else if(location.hash==='#despertar'&&!ch)startChallenge('link')});
 
 /* ---------- despertador ---------- */
@@ -839,6 +1103,7 @@ function openSettings(focus){
   const cd=S.meta.countdown||{};
   $('#set-body').innerHTML=`
   <div style="display:flex;justify-content:space-between;align-items:center"><b class="disp" style="font-size:28px;text-transform:uppercase">Ajustes</b><button type="button" class="x" data-close-set aria-label="Cerrar">×</button></div>
+  ${owner?`<div class="set-sec"><h4>Dueño</h4><button class="btn red" type="button" data-owner-open style="justify-self:start">${ICON_CROWN} Abrir el panel del dueño</button><div class="note">Solo tu cuenta ve este botón.</div></div>`:''}
   <div class="set-sec"><h4>Tu perfil</h4>
     <form class="row" id="st-name"><label>Nombre<input id="st-n" maxlength="40" value="${esc(S.meta.name)}" required></label><button class="btn" type="submit">Guardar</button></form>
     <div class="note">Entras con ${esc(email)}</div></div>
@@ -883,6 +1148,7 @@ $('#settings').addEventListener('click',async e=>{
   if(e.target.id==='settings')return closeSettings();
   const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
   if(ds.closeSet!==undefined)return closeSettings();
+  if(ds.ownerOpen!==undefined){closeSettings();enterOwner();return}
   if(ds.cdClear!==undefined){S.meta.countdown={label:'',date:''};save('meta');render();openSettings();toast('Fecha quitada');return}
   if(ds.install!==undefined&&installEvt){installEvt.prompt();try{await installEvt.userChoice}catch(err){}installEvt=null;openSettings();return}
   if(ds.export!==undefined){const blob=new Blob([JSON.stringify(exportJSON(),null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mi-esquina-'+today()+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}
@@ -1001,7 +1267,7 @@ let pendingHash='';
 {const h=location.hash||'';if(hashGasto(h)||h==='#despertar')pendingHash=h;
  try{const r=new URLSearchParams(location.search).get('ref');if(r)sessionStorage.setItem('esquina.ref',r.slice(0,40))}catch(e){}}
 function teardown(){
-  loadingView=false;
+  loadingView=false;ownerReset();
   me=null;email='';S=defaults();dirty.clear();for(const k in timers)clearTimeout(timers[k]);
   disarm();stopRing();ch=null;$('#alarm').hidden=true;$('#sheet').hidden=true;closeSettings();$('#view').innerHTML='';
 }
@@ -1037,6 +1303,7 @@ async function boot(session){
       setSync();
     }
     if(pendingHash){const h=pendingHash;pendingHash='';clearHash();const g=hashGasto(h);if(g)openQuick(g);else if(h==='#despertar')startChallenge('link')}
+    checkOwner();
   }finally{booting=false}
 }
 /* Al volver a la app, trae cambios hechos en otro dispositivo */
@@ -1051,7 +1318,7 @@ async function pull(){
   const typing=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#view form');
   if(changed&&!typing&&$('#sheet').hidden&&$('#settings').hidden&&$('#alarm').hidden)render();
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pull();else for(const d of [...dirty])flush(d)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pull();if(owner)odRefresh()}else for(const d of [...dirty])flush(d)});
 
 sb.auth.onAuthStateChange((ev,session)=>{
   // Se difiere para no llamar a la base de datos dentro del aviso de sesión
