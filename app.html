@@ -19,7 +19,8 @@
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<div class="boot" id="boot">Cargando…</div>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="boot" id="boot" role="status" aria-label="Cargando"><div class="boot-logo">Mi <span>Esquina</span></div><div class="boot-bar"><i></i></div></div>
 
 <!-- Ingreso -->
 <div class="auth" id="auth" hidden>
@@ -74,17 +75,18 @@
 
 <!-- App -->
 <div class="wrap" id="app" hidden>
+  <div class="mini" id="mini"><b id="mini-t">Mi <span>Esquina</span></b><button class="x" type="button" data-settings aria-label="Ajustes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
   <div class="top">
     <div>
-      <div class="eyebrow" id="today-label">Hoy</div>
-      <h1>Mi <span>Esquina</span></h1>
-      <div class="sync" id="sync" style="margin-top:6px"><i></i><span>Cargando…</span></div>
+      <div class="hello" id="today-label"><b>Hola</b><span>Hoy</span></div>
+      <h1 id="title">Mi <span>Esquina</span></h1>
+      <div class="sync" id="sync"><i></i><span>Cargando…</span></div>
     </div>
     <div class="acts">
       <button class="gear" type="button" id="gear" aria-label="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
   </div>
-  <main id="view"><div class="empty">Cargando tus datos…</div></main>
+  <main id="view"></main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="overlay" id="night" hidden role="dialog" aria-label="Modo noche">
@@ -95,7 +97,7 @@
   <button class="btn" type="button" id="n-off">Desarmar</button>
 </div>
 <div class="overlay" id="alarm" hidden role="dialog" aria-label="Reto de despertar"></div>
-<button class="fab" id="fab" type="button" aria-label="Anotar gasto rápido" hidden>+ Gasto</button>
+<button class="fab" id="fab" type="button" aria-label="Anotar gasto rápido" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Gasto</span></button>
 <div class="sheet-bg" id="sheet" hidden><form class="sheet" id="f-quick" role="dialog" aria-label="Anotar gasto">
   <div style="display:flex;justify-content:space-between;align-items:center"><b class="eyebrow" id="q-title">Nuevo cobro</b><button type="button" class="x" id="q-close" aria-label="Cerrar">×</button></div>
   <label class="note" for="q-paste">¿Te llegó un aviso del banco? Pégalo aquí y leo el monto y el comercio</label>
@@ -106,7 +108,7 @@
   <button class="btn red" type="submit" id="q-save" style="padding:13px">Guardar gasto</button>
 </form></div>
 <div class="sheet-bg" id="settings" hidden><div class="sheet" id="set-body" role="dialog" aria-label="Ajustes"></div></div>
-<nav class="tabs" aria-label="Secciones" id="nav" hidden><div class="in" id="tabs"></div></nav>
+<nav class="tabs" aria-label="Secciones" id="nav" hidden><div class="nav-in"><span class="ind" id="tab-ind" aria-hidden="true"></span><div class="in" id="tabs"></div></div></nav>
 <script src="vendor/supabase.js"></script>
 <script src="app.js"></script>
 </body>

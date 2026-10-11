@@ -15,7 +15,8 @@ const dkey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const today=()=>dkey(new Date());
 const addDays=(k,n)=>{const [y,m,d]=k.split('-').map(Number);const x=new Date(y,m-1,d+n);return dkey(x)};
 const monthKey=k=>k.slice(0,7);
-const clp=n=>new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Math.round(n||0));
+const CLPF=new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0});
+const clp=n=>{const v=Math.round(n||0);return (v<0?'−':'')+CLPF.format(Math.abs(v))};
 const usd=n=>'US$'+(Math.round((n||0)*100)/100).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DIAS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
@@ -36,6 +37,7 @@ function syncAreas(){const names=obj(S.meta.areaNames);for(const k of AREA_KEYS)
 const areaOpts=sel=>AREA_KEYS.map(k=>`<option value="${k}" ${k===sel?'selected':''}>${esc(AREAS[k].n)}</option>`).join('');
 const CAT_G=['Comida','Casa y cuentas','Transporte','Familia e hijos','Entrenamiento','Estudios','Trabajo y negocio','Salud','Ocio','Otros'];
 const CAT_I=['Sueldo','Clientes y ventas','Honorarios','Otros'];
+const CAT_COL=['var(--blue)','var(--a-empresa)','var(--a-familia)','var(--a-contenido)','var(--water)','var(--a-salud)','#E85D9A','#7A8B2E'];
 const CAT_OLD={'Bebé':'Familia e hijos','Universidad':'Estudios','Negocio e IA':'Trabajo y negocio','Clientes IA':'Clientes y ventas'};
 const catFix=c=>{c=str(c,60);return CAT_OLD[c]||c||'Otros'};
 const STATUS=[['idea','Idea','var(--muted)'],['curso','En curso','var(--blue)'],['pausa','Pausado','var(--warn)'],['listo','Entregado','var(--ok)'],['vendido','Cobrado','var(--red)']];
@@ -199,40 +201,47 @@ const ICONS={
   semana:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'
 };
 const TABS=[['inicio','Inicio'],['habitos','Hábitos'],['dinero','Dinero'],['claude','Proyectos'],['semana','Semana']];
+const TITLES={inicio:['Mi','Esquina'],habitos:['Tus','Hábitos'],dinero:['Tu','Plata'],claude:['Tus','Proyectos'],semana:['Tu','Semana']};
 let tab='inicio', moneyMonth=monthKey(today()), txType='gasto';
 function drawTabs(){
   $('#tabs').innerHTML=TABS.map(([k,n])=>`<button data-tab="${k}" class="${k===tab?'on':''}" aria-current="${k===tab?'page':'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>${n}</button>`).join('');
+  $('#tab-ind').style.setProperty('--i',Math.max(0,TABS.findIndex(x=>x[0]===tab)));
 }
-function go(t){entering=true;tab=t;drawTabs();render();window.scrollTo(0,0);try{localStorage.setItem('esquina.tab',t)}catch(e){}}
+let slideDir='';
+function go(t){
+  if(t===tab){window.scrollTo({top:0,behavior:RM?'auto':'smooth'});return}
+  const a=TABS.findIndex(x=>x[0]===tab),b=TABS.findIndex(x=>x[0]===t);slideDir=b>a?'l':'r';
+  entering=true;tab=t;drawTabs();render();window.scrollTo(0,0);try{localStorage.setItem('esquina.tab',t)}catch(e){}
+}
 
 const prevRing={};
-function ring(p,size=96,stroke=10,color='var(--red)',key='day'){
-  const r=(size-stroke)/2,c=2*Math.PI*r,to=c*(1-Math.min(1,p)),from=prevRing[key]??c;prevRing[key]=to;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" class="rprog" data-to="${to}" style="stroke-dashoffset:${from}"/></svg>`;
+function ring(p,size=104,stroke=11,key='day'){
+  const r=(size-stroke)/2,c=2*Math.PI*r,to=c*(1-Math.min(1,p)),from=prevRing[key]??c;prevRing[key]=to;const g='rg-'+key;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--red2)"/><stop offset="1" style="stop-color:var(--red)"/></linearGradient></defs><circle class="track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#${g})" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" class="rprog" data-to="${to}" style="stroke-dashoffset:${from}"/></svg>`;
 }
 function beltHTML(bi){
   const b=bi.b;
-  return `<div class="belt" style="background:${b.col}"><div class="tip ${b.n==='Negro'?'red':''}">${[0,1,2,3].map(i=>`<i class="${i<bi.stripes?'on':''}"></i>`).join('')}</div></div>`;
+  return `<div class="belt" style="--belt:${b.col}"><div class="tip ${b.n==='Negro'?'red':''}">${[0,1,2,3].map(i=>`<i class="${i<bi.stripes?'on':''}"></i>`).join('')}</div></div><div class="bar xp" title="Avance al siguiente cinturón"><i style="--w:${Math.min(1,bi.pct).toFixed(3)}"></i></div>`;
 }
 function habitRow(h,k){
   const d=doneOn(k)[h.id];const st=habitStreak(h.id);
   const a=AREAS[h.area]||AREAS.salud;
   const wk=[...Array(7)].map((_,i)=>{const kk=addDays(k,i-6);return `<b class="${doneOn(kk)[h.id]?'y':''}"></b>`}).join('');
   return `<button class="habit ${d?'done':''}" data-hab="${esc(h.id)}" style="--c:${a.c}" aria-pressed="${!!d}">
-    <span class="ck">${d?'✓':''}</span>
+    <span class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg></span>
     <span style="flex:1;min-width:0"><span class="hn">${esc(h.name)}</span><span class="week7">${wk}</span>
     <span class="note">${esc(a.n)}${st?` · racha ${st} ${st===1?'día':'días'}`:''}</span></span>
     <span class="pts">+${+h.pts}</span></button>`;
 }
 function countdownCard(){
   const cd=S.meta.countdown||{};
-  if(!isDate(cd.date))return `<div class="card"><h2>Tu fecha importante</h2><div class="big muted">—</div><div class="note">Una pelea, un examen, un viaje, un nacimiento.</div><button class="btn sm" type="button" data-settings="cd" style="margin-top:8px">Elegir fecha</button></div>`;
+  if(!isDate(cd.date))return `<div class="card tint" style="--c:var(--a-contenido)"><h2>Tu fecha importante</h2><div class="big muted">—</div><div class="note">Una pelea, un examen, un viaje, un nacimiento.</div><button class="btn sm" type="button" data-settings="cd" style="margin-top:8px">Elegir fecha</button></div>`;
   const n=daysTo(cd.date);
-  return `<div class="card"><h2>${esc(cd.label||'Cuenta regresiva')}</h2><div class="big num" ${n>0?`data-count="${n}"`:''}>${n>0?n:n===0?'¡Hoy!':'Listo'}</div><div class="note">${n>0?(n===1?'día':'días')+' para el '+fmtDate(cd.date):n===0?'Es hoy':'Fue el '+fmtDate(cd.date)}</div></div>`;
+  return `<div class="card tint" style="--c:var(--a-contenido)"><h2>${esc(cd.label||'Cuenta regresiva')}</h2><div class="big num" ${n>0?`data-count="${n}" data-ck="cd"`:''}>${n>0?n:n===0?'¡Hoy!':'Listo'}</div><div class="note">${n>0?(n===1?'día':'días')+' para el '+fmtDate(cd.date):n===0?'Es hoy':'Fue el '+fmtDate(cd.date)}</div></div>`;
 }
 function welcomeCard(){
   if(S.meta.onboarded)return '';
-  return `<div class="card welcome" style="margin-bottom:12px;border-color:var(--red)"><h2 style="color:var(--fg)">Tu esquina está lista${firstName()?', '+esc(firstName()):''} <button class="x" type="button" data-onb aria-label="Cerrar bienvenida">×</button></h2>
+  return `<div class="card welcome" style="margin-bottom:12px"><h2 style="color:var(--fg)">Tu esquina está lista${firstName()?', '+esc(firstName()):''} <button class="x" type="button" data-onb aria-label="Cerrar bienvenida">×</button></h2>
   <ol><li>Marca un hábito de abajo apenas lo cumplas. Cada uno suma XP para subir de cinturón.</li><li>Anota tu primer gasto con el botón rojo <b>+ Gasto</b>.</li><li>Arma tu semana en <b>Semana</b>. Puedes partir con un ejemplo.</li><li>Instálala en tu celular desde <b>Ajustes</b> (el engranaje de arriba).</li></ol></div>`;
 }
 
@@ -249,8 +258,8 @@ function vInicio(){
   ${welcomeCard()}
   ${alarmCard()}
   <div class="grid g2 stack-sm" style="margin-top:12px">
-    <div class="card" style="display:flex;gap:16px;align-items:center">
-      <div class="ring">${ring(r)}<div class="c"><div><div class="big num" data-count="${Math.round(r*100)}" data-kind="pct">${Math.round(r*100)}%</div><div class="note">del día</div></div></div></div>
+    <div class="card hero" style="display:flex;gap:16px;align-items:center">
+      <div class="ring">${ring(r)}<div class="c"><div><div class="big num" data-count="${Math.round(r*100)}" data-kind="pct" data-ck="pct">${Math.round(r*100)}%</div><div class="note">del día</div></div></div></div>
       <div style="min-width:0">
         <div class="eyebrow">Round de hoy</div>
         <div style="font-weight:700;font-size:17px;margin:2px 0 6px">${r>=1?'Round ganado. Día perfecto.':r>=.5?'Vas ganando el round.':'Sal de la esquina.'}</div>
@@ -268,12 +277,12 @@ function vInicio(){
   </div>
   <div style="margin-top:12px">${waterCard()}</div>
   <div class="grid g3" style="margin-top:12px">
-    <div class="card"><h2>Racha</h2><div class="flame num" data-count="${st}">${st}</div><div class="note">${st===1?'día':'días'} seguidos con la mitad o más</div></div>
+    <div class="card tint" style="--c:var(--red)"><h2>Racha</h2><div class="flame num" data-count="${st}" data-ck="racha">${st}</div><div class="note">${st===1?'día con la mitad o más':'días seguidos con la mitad o más'}</div></div>
     ${countdownCard()}
-    <div class="card"><h2>Saldo del mes</h2><div class="big num" data-count="${ing-gas}" data-kind="clp" style="color:${ing-gas>=0?'var(--ok)':'var(--red)'}">${clp(ing-gas)}</div><div class="note">${clp(ing)} entra · ${clp(gas)} sale</div></div>
-    <div class="card"><h2>Herramientas del mes</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp">${clp(tm.total)}</div><div class="note">${S.claude.subs.length?S.claude.subs.length+' suscripciones'+(tm.apiUsd?' · uso '+usd(tm.apiUsd):''):'Anota tus suscripciones en Proyectos'}</div></div>
-    <div class="card"><h2>Proyectos activos</h2><div class="big num">${active.length}</div><div class="note">${active.length?esc(active.slice(0,2).map(p=>p.name).join(', ')):'Ninguno en curso'}</div></div>
-    <div class="card"><h2>Gasto más grande</h2>${topCat(tx)}</div>
+    <div class="card tint" style="--c:${ing-gas>=0?'var(--ok)':'var(--red)'}"><h2>Saldo del mes</h2><div class="big num" data-count="${ing-gas}" data-kind="clp" data-ck="saldo">${clp(ing-gas)}</div><div class="note">${clp(ing)} entra · ${clp(gas)} sale</div></div>
+    <div class="card tint" style="--c:var(--blue)"><h2>Herramientas del mes</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp" data-ck="tools">${clp(tm.total)}</div><div class="note">${S.claude.subs.length?S.claude.subs.length+(S.claude.subs.length===1?' suscripción':' suscripciones')+(tm.apiUsd?' · uso '+usd(tm.apiUsd):''):'Anota tus suscripciones en Proyectos'}</div></div>
+    <div class="card tint" style="--c:var(--a-empresa)"><h2>Proyectos activos</h2><div class="big num" data-count="${active.length}" data-ck="proj">${active.length}</div><div class="note">${active.length?esc(active.slice(0,2).map(p=>p.name).join(', ')):'Ninguno en curso'}</div></div>
+    <div class="card tint" style="--c:var(--a-familia)"><h2>Gasto más grande</h2>${topCat(tx)}</div>
   </div>
   ${weekGlance(k)}
   <div class="sec">
@@ -293,7 +302,7 @@ function weekGlance(k){
   const train=S.week.blocks.filter(b=>b.area==='deporte').length;
   const next=S.claude.projects.filter(p=>p.status==='curso'&&p.next).slice(0,3);
   return `<div class="sec"><div class="sec-h"><h3>Esta semana</h3><span class="muted num">${Math.round(avg*100)}% de hábitos cumplidos</span></div>
-  <div class="card"><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:92px">${days.map(d=>`<div style="display:grid;gap:4px;justify-items:center;align-self:stretch;align-content:end"><div style="width:100%;max-width:34px;height:${d.r===null?4:Math.max(4,d.r*64)}px;border-radius:6px;background:${d.r===null?'var(--sunk)':d.r>=1?'var(--red)':d.r>=.5?'color-mix(in srgb,var(--red) 60%,var(--sunk))':'color-mix(in srgb,var(--red) 25%,var(--sunk))'}"></div><span class="note" style="${d.kk===k?'color:var(--red);font-weight:700':''}">${DIAS[d.i]}</span></div>`).join('')}</div>
+  <div class="card"><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:92px">${days.map(d=>`<div style="display:grid;gap:4px;justify-items:center;align-self:stretch;align-content:end"><div class="wb" style="--d:${d.i};width:100%;max-width:34px;height:${d.r===null?4:Math.max(4,d.r*64)}px;border-radius:8px;background:${d.r===null?'var(--sunk)':d.r>=1?'var(--red)':d.r>=.5?'color-mix(in srgb,var(--red) 60%,var(--sunk))':'color-mix(in srgb,var(--red) 25%,var(--sunk))'}"></div><span class="note" style="${d.kk===k?'color:var(--red);font-weight:700':''}">${DIAS[d.i]}</span></div>`).join('')}</div>
   <div class="grid g3" style="margin-top:12px;gap:8px"><div><div class="eyebrow">Gastado</div><b class="num">${clp(wk)}</b></div><div><div class="eyebrow">${esc(AREAS.deporte.n)}</div><b class="num">${train} ${train===1?'bloque':'bloques'}</b></div><div><div class="eyebrow">XP semana</div><b class="num">${days.filter(d=>d.r!==null).reduce((a,d)=>a+Object.values(doneOn(d.kk)).reduce((x,y)=>x+y,0),0)}</b></div></div>
   ${next.length?`<div class="list" style="margin-top:10px">${next.map(p=>`<div class="li"><span class="dot" style="background:var(--blue)"></span><div class="grow"><div class="t">${esc(p.next)}</div><div class="s">${esc(p.name)}</div></div></div>`).join('')}</div>`:''}
   </div></div>`;
@@ -301,14 +310,14 @@ function weekGlance(k){
 function topCat(tx){
   const by={};tx.filter(t=>t.type==='gasto').forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amt);
   const e=Object.entries(by).sort((a,b)=>b[1]-a[1])[0];
-  return e?`<div class="big num">${clp(e[1])}</div><div class="note">${esc(e[0])}</div>`:`<div class="big muted">—</div><div class="note">Sin gastos este mes</div>`;
+  return e?`<div class="big num" data-count="${Math.round(e[1])}" data-kind="clp" data-ck="top">${clp(e[1])}</div><div class="note">${esc(e[0])}</div>`:`<div class="big muted">—</div><div class="note">Sin gastos este mes</div>`;
 }
 function fmtDate(k){const [y,m,d]=k.split('-').map(Number);return d+' de '+MESES[m-1]}
 
 function vHabitos(){
   const k=today();const xp=totalXP(),bi=beltFor(xp);
   const start=addDays(k,-(7*12-1)-dow(addDays(k,-(7*12-1))));
-  let cells='';for(let i=0;i<7*13;i++){const kk=addDays(start,i);if(kk>k)break;const r=dayRatio(kk);cells+=`<i title="${kk}: ${Math.round(r*100)}%" style="border-radius:3px;background:${r?`color-mix(in srgb,var(--red) ${20+r*80}%,var(--sunk))`:'var(--sunk)'}"></i>`}
+  let cells='';for(let i=0;i<7*13;i++){const kk=addDays(start,i);if(kk>k)break;const r=dayRatio(kk);cells+=`<i title="${kk}: ${Math.round(r*100)}%" style="--n:${i};border-radius:4px;background:${r?`color-mix(in srgb,var(--red) ${20+r*80}%,var(--sunk))`:'var(--sunk)'}"></i>`}
   return `
   <div class="card">
     <h2>Tu cinturón <span class="chip num">${xp.toLocaleString('es-CL')} XP</span></h2>
@@ -323,7 +332,7 @@ function vHabitos(){
   </div>
   <div class="sec">
     <div class="sec-h"><h3>Últimas 13 semanas</h3><span class="note">Más rojo, más completo el día</span></div>
-    <div class="card scroll-x"><div style="display:grid;grid-template-rows:repeat(7,14px);grid-auto-flow:column;grid-auto-columns:14px;gap:3px">${cells}</div></div>
+    <div class="card scroll-x"><div class="hm" style="display:grid;grid-template-rows:repeat(7,14px);grid-auto-flow:column;grid-auto-columns:14px;gap:3px">${cells}</div></div>
   </div>
   <div class="sec">
     <div class="sec-h"><h3>Tus hábitos</h3></div>
@@ -354,9 +363,9 @@ function vDinero(){
     <div style="display:flex;align-items:center;gap:6px"><button class="btn sm" data-mon="-1" aria-label="Mes anterior">‹</button><h3 class="disp" style="font-size:26px;text-transform:uppercase">${MESES[mm-1]} ${y}</h3><button class="btn sm" data-mon="1" aria-label="Mes siguiente">›</button></div>
   </div>
   <div class="grid g3">
-    <div class="card"><h2>Entró</h2><div class="big num" style="color:var(--ok)">${clp(I)}</div></div>
-    <div class="card"><h2>Salió</h2><div class="big num" style="color:var(--red)">${clp(G)}</div></div>
-    <div class="card"><h2>Quedó</h2><div class="big num">${clp(I-G)}</div><div class="note">${I?Math.round((I-G)/I*100)+'% ahorrado':'Registra tus ingresos'}</div></div>
+    <div class="card tint" style="--c:var(--ok)"><h2>Entró</h2><div class="big num" data-count="${Math.round(I)}" data-kind="clp" data-ck="in">${clp(I)}</div></div>
+    <div class="card tint" style="--c:var(--red)"><h2>Salió</h2><div class="big num" data-count="${Math.round(G)}" data-kind="clp" data-ck="out">${clp(G)}</div></div>
+    <div class="card tint wide" style="--c:${I-G<0?'var(--red)':'var(--blue)'}"><h2>Quedó</h2><div class="big num" data-count="${Math.round(I-G)}" data-kind="clp" data-ck="left">${clp(I-G)}</div><div class="note">${I?Math.round((I-G)/I*100)+'% ahorrado':'Registra tus ingresos'}</div></div>
   </div>
   <div class="card" style="margin-top:12px">
     <h2>Anotar movimiento <span class="seg"><button type="button" data-type="gasto" class="${txType==='gasto'?'on':''}">Gasto</button><button type="button" data-type="ingreso" class="${txType==='ingreso'?'on':''}">Ingreso</button></span></h2>
@@ -370,7 +379,7 @@ function vDinero(){
   </div>
   <div class="sec">
     <div class="sec-h"><h3>A dónde va tu plata</h3></div>
-    <div class="card">${cats.length?cats.map(([c,v])=>{const bud=S.money.budgets[c];const over=bud&&v>bud;return `<div style="display:grid;gap:5px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(c)}</b><span class="num ${over?'':'muted'}" style="${over?'color:var(--red);font-weight:700':''}">${clp(v)}${bud?' / '+clp(bud):''} · ${Math.round(v/G*100)}%</span></div><div class="bar"><i style="width:${bud?Math.min(100,v/bud*100):v/max*100}%;background:${over?'var(--red)':'var(--fg)'}"></i></div></div>`}).join(''):'<div class="empty">Aún no hay gastos este mes. Anota el primero arriba y aquí verás en qué se va tu plata.</div>'}
+    <div class="card">${cats.length?cats.map(([c,v],ci)=>{const bud=S.money.budgets[c];const over=bud&&v>bud;const col=over?'var(--red)':CAT_COL[ci%CAT_COL.length];return `<div style="display:grid;gap:6px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:${col}"></span>${esc(c)}</b><span class="num ${over?'':'muted'}" style="${over?'color:var(--red);font-weight:700':''}">${clp(v)}${bud?' / '+clp(bud):''} · ${Math.round(v/G*100)}%</span></div><div class="bar"><i style="width:${bud?Math.min(100,v/bud*100):v/max*100}%;background:${col}"></i></div></div>`}).join(''):'<div class="empty">Aún no hay gastos este mes. Anota el primero arriba y aquí verás en qué se va tu plata.</div>'}
     ${tm.total?`<div class="note">Además, tus herramientas este mes: ${clp(tm.total)}. Si las pagas tú, anótalas como gasto en "Trabajo y negocio".</div>`:''}
     </div>
   </div>
@@ -413,13 +422,13 @@ function vProyectos(){
   const usage=[...C.usage].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
   return `
   <div class="grid g3">
-    <div class="card"><h2>Herramientas · ${MESES[+m.slice(5)-1]}</h2><div class="big num">${clp(tm.total)}</div><div class="note">${clp(tm.subs)} fijo${tm.apiUsd?' · '+usd(tm.apiUsd)+' variable':''}</div></div>
-    <div class="card"><h2>Por cobrar</h2><div class="big num">${clp(pipeline)}</div><div class="note">en proyectos abiertos</div></div>
-    <div class="card"><h2>Cobrado</h2><div class="big num" style="color:var(--ok)">${clp(cobrado)}</div><div class="note">${tm.total?'Retorno vs herramientas: '+(cobrado?Math.round(cobrado/tm.total)+'x':'aún 0'):'—'}</div></div>
+    <div class="card tint" style="--c:var(--blue)"><h2>Herramientas · ${MESES[+m.slice(5)-1]}</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp" data-ck="tools">${clp(tm.total)}</div><div class="note">${clp(tm.subs)} fijo${tm.apiUsd?' · '+usd(tm.apiUsd)+' variable':''}</div></div>
+    <div class="card tint" style="--c:var(--warn)"><h2>Por cobrar</h2><div class="big num" data-count="${Math.round(pipeline)}" data-kind="clp" data-ck="pipe">${clp(pipeline)}</div><div class="note">en proyectos abiertos</div></div>
+    <div class="card tint wide" style="--c:var(--ok)"><h2>Cobrado</h2><div class="big num" data-count="${Math.round(cobrado)}" data-kind="clp" data-ck="paid">${clp(cobrado)}</div><div class="note">${tm.total?'Retorno vs herramientas: '+(cobrado?Math.round(cobrado/tm.total)+'x':'aún 0'):'—'}</div></div>
   </div>
   <div class="sec">
     <div class="sec-h"><h3>Proyectos</h3><span class="muted">${C.projects.filter(p=>p.status==='curso').length} en curso</span></div>
-    <div class="card"><div class="list">${P.map(p=>{const s=stInfo(p.status);return `<div class="li" style="align-items:flex-start"><span class="dot" style="background:${s[2]};margin-top:7px"></span><div class="grow"><div class="t">${safeUrl(p.link)?`<a href="${esc(safeUrl(p.link))}" target="_blank" rel="noopener noreferrer" style="color:inherit">${esc(p.name)}</a>`:esc(p.name)}</div><div class="s">${esc(p.client||'Sin cliente')}${+p.value?' · '+clp(p.value):''}${perProj[p.name]?' · uso '+usd(perProj[p.name]):''}</div>${p.next?`<div class="s">Siguiente paso: ${esc(p.next)}</div>`:''}</div><select data-pst="${esc(p.id)}" aria-label="Estado de ${esc(p.name)}" style="width:auto;padding:5px 6px;font-size:13px">${STATUS.map(x=>`<option value="${x[0]}" ${x[0]===p.status?'selected':''}>${x[1]}</option>`).join('')}</select><button class="x" data-delp="${esc(p.id)}" aria-label="Borrar proyecto">×</button></div>`}).join('')||'<div class="empty">Sin proyectos todavía. Anota lo que estás construyendo, para quién y cuál es el siguiente paso.</div>'}</div>
+    <div class="card"><div class="list">${P.map(p=>{const s=stInfo(p.status);return `<div class="li" style="align-items:flex-start"><span class="dot" style="background:${s[2]};margin-top:7px"></span><div class="grow"><div class="t">${safeUrl(p.link)?`<a href="${esc(safeUrl(p.link))}" target="_blank" rel="noopener noreferrer" style="color:inherit">${esc(p.name)}</a>`:esc(p.name)}</div><div class="s">${esc(p.client||'Sin cliente')}${+p.value?' · '+clp(p.value):''}${perProj[p.name]?' · uso '+usd(perProj[p.name]):''}</div>${p.next?`<div class="s">Siguiente paso: ${esc(p.next)}</div>`:''}</div><select data-pst="${esc(p.id)}" aria-label="Estado de ${esc(p.name)}" style="width:auto;min-height:38px;padding:6px 8px">${STATUS.map(x=>`<option value="${x[0]}" ${x[0]===p.status?'selected':''}>${x[1]}</option>`).join('')}</select><button class="x" data-delp="${esc(p.id)}" aria-label="Borrar proyecto">×</button></div>`}).join('')||'<div class="empty">Sin proyectos todavía. Anota lo que estás construyendo, para quién y cuál es el siguiente paso.</div>'}</div>
     <form class="row" id="f-p" style="margin-top:12px">
       <label style="grid-column:1/-1">Nuevo proyecto<input id="p-name" required maxlength="120" placeholder="Ej: Página web para una pyme"></label>
       <label>Cliente<input id="p-client" maxlength="80" placeholder="Opcional"></label>
@@ -483,11 +492,11 @@ function waterCard(){
   const y=v=>(118-v*104).toFixed(1); // 118 = fondo del vaso, 14 = borde
   const glasses=Math.floor(ml/250);
   let streak=0,kk=k;if(!(ml>=w.goal))kk=addDays(k,-1);while((w.log[kk]||0)>=w.goal){streak++;kk=addDays(kk,-1)}
-  const wave=(cls)=>`<path class="wave ${cls}" d="M0 6 Q10 0 20 6 T40 6 T60 6 T80 6 T100 6 T120 6 T140 6 T160 6 T180 6 V140 H0Z" fill="var(--water)"/>`;
-  return `<div class="card"><h2>Agua de hoy <span class="chip num" style="color:var(--water)">${ml>=w.goal?'Meta lista · +'+WATER_XP+' XP':Math.round(pct*100)+'%'}</span></h2>
+  const wave=(cls)=>`<path class="wave ${cls}" d="M0 6 Q10 0 20 6 T40 6 T60 6 T80 6 T100 6 T120 6 T140 6 T160 6 T180 6 V140 H0Z" fill="url(#wg)"/>`;
+  return `<div class="card tint" style="--c:var(--water)"><h2>Agua de hoy <span class="chip num" style="color:var(--water)">${ml>=w.goal?'Meta lista · +'+WATER_XP+' XP':Math.round(pct*100)+'%'}</span></h2>
   <div class="water">
     <div class="glass" id="glass"><svg viewBox="0 0 92 132" role="img" aria-label="Vaso con ${ml} ml de ${w.goal} ml">
-      <defs><clipPath id="vaso"><path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z"/></clipPath></defs>
+      <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:#6FD3FF"/><stop offset=".55" style="stop-color:var(--water)"/></linearGradient><clipPath id="vaso"><path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z"/></clipPath></defs>
       <path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z" fill="var(--sunk)"/>
       <g clip-path="url(#vaso)"><g class="wlevel" id="wlevel" data-to="${y(pct)}" style="transform:translateY(${y(from)}px)">${wave('b')}${wave('')}
         ${pct>0?`<circle class="bub" cx="32" cy="100" r="2.2" fill="#fff"/><circle class="bub" cx="55" cy="108" r="1.6" fill="#fff" style="animation-delay:1s"/><circle class="bub" cx="44" cy="112" r="2" fill="#fff" style="animation-delay:1.9s"/>`:''}
@@ -496,11 +505,11 @@ function waterCard(){
       ${[.25,.5,.75].map(f=>`<line x1="70" x2="78" y1="${y(f)}" y2="${y(f)}" stroke="var(--fg)" stroke-opacity=".25" stroke-width="1.5"/>`).join('')}
     </svg></div>
     <div style="min-width:0">
-      <div class="big num" style="color:var(--water)">${(ml/1000).toLocaleString('es-CL',{maximumFractionDigits:2})} L</div>
+      <div class="big num" style="color:var(--water)" data-count="${ml}" data-kind="lt" data-ck="water">${(ml/1000).toLocaleString('es-CL',{maximumFractionDigits:2})} L</div>
       <div class="note num">de ${(w.goal/1000).toLocaleString('es-CL',{maximumFractionDigits:2})} L · ${glasses} ${glasses===1?'vaso':'vasos'}${streak?` · racha ${streak} ${streak===1?'día':'días'}`:''}</div>
-      <div class="wbtns"><button class="btn water" data-water="250">+ Vaso</button><button class="btn water" data-water="500">+ Botella</button><button class="btn" data-water="-250" aria-label="Quitar un vaso">−</button></div>
     </div>
-  </div></div>`;
+  </div>
+  <div class="wbtns"><button class="btn water" data-water="250">+ Vaso</button><button class="btn water" data-water="500">+ Botella</button><button class="btn" data-water="-250" aria-label="Quitar un vaso">−</button></div></div>`;
 }
 function animateWater(){
   const el=document.getElementById('wlevel');if(!el)return;
@@ -509,27 +518,62 @@ function animateWater(){
 }
 
 const VIEWS={inicio:vInicio,habitos:vHabitos,dinero:vDinero,claude:vProyectos,semana:vSemana};
-function render(){
-  if(!me)return;
-  syncAreas();
+let loadingView=false,revealIO=null;const prevCount={};
+function renderHead(){
   const d=new Date();
   const fecha=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()]+' '+d.getDate()+' de '+MESES[d.getMonth()];
-  const hr=d.getHours();$('#today-label').textContent=(hr<12?'Buenos días':hr<20?'Buenas tardes':'Buenas noches')+(firstName()?', '+firstName():'')+' · '+fecha;
-  const v=$('#view');v.innerHTML=VIEWS[tab]();animateWater();
+  const hr=d.getHours();
+  $('#today-label').innerHTML='<b>'+esc((hr<12?'Buenos días':hr<20?'Buenas tardes':'Buenas noches')+(firstName()?', '+firstName():''))+'</b><span>'+esc(fecha)+'</span>';
+  const tl=$('#title'),T=TITLES[tab]||TITLES.inicio,th=esc(T[0])+' <span>'+esc(T[1])+'</span>';
+  if(tl.dataset.t!==tab){tl.dataset.t=tab;tl.innerHTML=th;$('#mini-t').innerHTML=th;tl.classList.remove('swap');void tl.offsetWidth;tl.classList.add('swap')}
+}
+function render(){
+  if(!me)return;
+  syncAreas();renderHead();
+  const v=$('#view');
+  if(revealIO){revealIO.disconnect();revealIO=null}
+  if(loadingView){v.innerHTML='<div class="skel" aria-label="Cargando tus datos"><i></i><i></i><i></i></div>';return}
+  v.innerHTML=VIEWS[tab]();animateWater();
   requestAnimationFrame(()=>requestAnimationFrame(()=>v.querySelectorAll('.rprog').forEach(c=>c.style.strokeDashoffset=c.dataset.to)));
-  if(entering){entering=false;v.classList.add('enter');
-    v.querySelectorAll('.card,.habit,.sec-h,.blk').forEach((el,i)=>el.style.animationDelay=Math.min(i,16)*40+'ms');
-    v.querySelectorAll('[data-count]').forEach(countUp);
-    clearTimeout(render._t);render._t=setTimeout(()=>v.classList.remove('enter'),1400)}
+  const counts=[...v.querySelectorAll('[data-count]')],ck=(el,i)=>tab+':'+(el.dataset.ck||i);
+  if(entering){entering=false;
+    if(slideDir&&!RM){v.classList.remove('slide-l','slide-r');void v.offsetWidth;v.classList.add('slide-'+slideDir)}slideDir='';
+    counts.forEach((el,i)=>{prevCount[ck(el,i)]=+el.dataset.count});
+    reveal(v);
+  }else counts.forEach((el,i)=>{const k=ck(el,i),to=+el.dataset.count,from=prevCount[k];prevCount[k]=to;
+    if(from!==undefined&&from!==to&&!RM){countUp(el,from,to);el.classList.add('bump')}});
   if(celebrate){const c=celebrate;celebrate=null;requestAnimationFrame(()=>c())}
+}
+/* Cada tarjeta entra cuando aparece en pantalla; sus números cuentan desde cero en ese momento */
+function reveal(v){
+  if(!('IntersectionObserver' in window))return;
+  const els=[...v.querySelectorAll('.card,.habit,.sec-h,.blk')].filter(el=>!el.parentElement.closest('.card,.habit'));
+  els.forEach(el=>el.classList.add('rv'));
+  let n=0,last=0;
+  revealIO=new IntersectionObserver((ents,obs)=>{
+    const now=performance.now();if(now-last>160)n=0;last=now;
+    for(const en of ents){if(!en.isIntersecting)continue;const el=en.target;obs.unobserve(el);
+      el.style.setProperty('--rd',Math.min(n++,9)*60+'ms');el.classList.add('in','seen');
+      el.querySelectorAll('[data-count]').forEach(c=>countUp(c,0,+c.dataset.count));
+      el.addEventListener('animationend',function done(ev){if(ev.target!==el)return;el.classList.remove('rv','in');el.style.removeProperty('--rd');el.removeEventListener('animationend',done)});
+    }
+  },{rootMargin:'0px 0px -3% 0px',threshold:0.01});
+  els.forEach(el=>revealIO.observe(el));
 }
 let entering=true,celebrate=null;
 const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}})();
-function countUp(el){
-  if(RM)return;const n=+el.dataset.count,k=el.dataset.kind||'int';if(!isFinite(n)||n===0)return;
-  const f=v=>k==='pct'?Math.round(v)+'%':k==='clp'?clp(v):k==='usd'?usd(v):String(Math.round(v));
-  const t0=performance.now(),dur=900;
-  (function step(t){const q=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-q,3);el.textContent=f(n*e);if(q<1)requestAnimationFrame(step);else el.textContent=f(n)})(t0);
+function countUp(el,from,to){
+  if(RM||!isFinite(to)||!isFinite(from)||from===to)return;const k=el.dataset.kind||'int';
+  const f=v=>k==='pct'?Math.round(v)+'%':k==='clp'?clp(v):k==='usd'?usd(v):k==='lt'?(v/1000).toLocaleString('es-CL',{maximumFractionDigits:2})+' L':String(Math.round(v));
+  const t0=performance.now(),dur=Math.min(1100,600+Math.abs(to-from)*2),tok=el._cu=(el._cu||0)+1;
+  (function step(t){if(el._cu!==tok)return;const q=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-q,3);el.textContent=f(from+(to-from)*e);if(q<1)requestAnimationFrame(step);else el.textContent=f(to)})(t0);
+}
+/* Texto que sale volando desde un elemento: +20 XP, +250 ml */
+function flyAt(sel,text,color){
+  if(RM)return;const el=document.querySelector(sel);if(!el)return;const r=el.getBoundingClientRect();
+  const s=document.createElement('div');s.className='xpfly';s.textContent=text;s.style.left=(r.left+r.width/2)+'px';s.style.top=(r.top+r.height/2)+'px';
+  s.style.setProperty('--c',color||getComputedStyle(el).getPropertyValue('--c').trim()||'var(--red)');
+  document.body.appendChild(s);s.addEventListener('animationend',()=>s.remove());setTimeout(()=>s.remove(),1600);
 }
 /* confeti y chispas */
 const FX=(()=>{let cv,cx,parts=[],raf=0;
@@ -550,6 +594,16 @@ function safeUrl(u){return /^https?:\/\//i.test(String(u||'').trim())?String(u).
 const num=v=>{const s=String(v||'').replace(/\s|\$/g,'');if(/,\d{1,2}$/.test(s))return parseFloat(s.replace(/\./g,'').replace(',','.'));return parseFloat(s.replace(/[.,](?=\d{3}(\D|$))/g,'').replace(',','.'))||0};
 
 /* ---------- eventos de la app ---------- */
+/* Onda bajo el dedo y un pulso corto de vibración (en Android) en cada botón */
+document.addEventListener('pointerdown',e=>{
+  const b=e.target.closest('.btn,.habit,nav.tabs button,.cats button,.picks button,.seg button,.gear,.fab');if(!b||b.disabled||b.closest('#alarm'))return;
+  if(!RM){const r=b.getBoundingClientRect(),z=Math.max(r.width,r.height)*2.2,sp=document.createElement('span');sp.className='rip';
+    sp.style.cssText=`width:${z}px;height:${z}px;left:${e.clientX-r.left-z/2}px;top:${e.clientY-r.top-z/2}px`;b.appendChild(sp);setTimeout(()=>sp.remove(),600)}
+  try{navigator.vibrate&&navigator.vibrate(8)}catch(err){}
+},{passive:true});
+/* Al bajar aparece la barra compacta y el botón de gasto se achica; al subir vuelve */
+{let lastY=0,raf=0;addEventListener('scroll',()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const y=window.scrollY,b=document.body;
+  b.classList.toggle('scrolled',y>120);if(Math.abs(y-lastY)>8){b.classList.toggle('down',y>lastY&&y>180);lastY=y}})},{passive:true})}
 document.addEventListener('click',e=>{
   if(!me)return;
   const t=e.target.closest('button,[data-go]');if(!t||t.closest('#auth'))return;
@@ -562,15 +616,15 @@ document.addEventListener('click',e=>{
   if(ds.hab){
     const k=today(),log=H().log;log[k]=log[k]||{};
     const h=H().list.find(x=>x.id===ds.hab);if(!h)return;
-    if(log[k][ds.hab]){delete log[k][ds.hab];if(!Object.keys(log[k]).length)delete log[k]}
+    if(log[k][ds.hab]){delete log[k][ds.hab];if(!Object.keys(log[k]).length)delete log[k];const id=ds.hab;celebrate=()=>{const b=document.querySelector(`[data-hab="${CSS.escape(id)}"]`);if(b)b.classList.add('unpop')}}
     else{const before=beltFor(totalXP());log[k][ds.hab]=h.pts;const after=beltFor(totalXP());
       const big=after.i>before.i||after.stripes>before.stripes||dayRatio(k)>=1;
       toast(after.i>before.i?'¡Nuevo cinturón: '+after.b.n+'!':after.stripes>before.stripes?'¡Nuevo grado!':dayRatio(k)>=1?'Round perfecto 🥊':'+'+h.pts+' XP');
-      const id=ds.hab;celebrate=()=>{const b=document.querySelector(`[data-hab="${CSS.escape(id)}"]`);if(b)b.classList.add('pop');burstAt(`[data-hab="${CSS.escape(id)}"] .ck`);if(big)FX.rain()}}
+      const id=ds.hab,pts=h.pts;celebrate=()=>{const sel=`[data-hab="${CSS.escape(id)}"]`,b=document.querySelector(sel);if(b)b.classList.add('pop');burstAt(sel+' .ck');flyAt(sel+' .pts','+'+pts+' XP');if(big)FX.rain()}}
     save('habits');render();return;
   }
   if(ds.water){const k=today(),w=W(),before=w.log[k]||0;const nv=Math.max(0,before+(+ds.water));if(nv)w.log[k]=nv;else delete w.log[k];
-    if(before<w.goal&&nv>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');celebrate=()=>FX.rain()}else if(+ds.water>0){toast('+'+ds.water+' ml');celebrate=()=>burstAt('#glass svg path')}
+    if(before<w.goal&&nv>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');celebrate=()=>FX.rain()}else if(+ds.water>0){toast('+'+ds.water+' ml');const ml=ds.water;celebrate=()=>{burstAt('#glass svg path');flyAt('#glass','+'+ml+' ml','var(--water)')}}
     save('habits');render();const g=document.getElementById('glass');if(g){g.classList.add('splash')}return}
   if(ds.copy){const el=document.getElementById(ds.copy),txt=el?el.textContent:'';
     const ok=()=>toast('Enlace copiado');const fb=()=>{try{const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}catch(e){}toast('Mantén presionado para copiar')};
@@ -634,7 +688,7 @@ function openQuick(pre){
   $('#q-amt').value=pre?pre.amt.toLocaleString('es-CL'):'';$('#q-note').value=pre?pre.where:'';$('#q-paste').value='';
   $('#q-title').textContent=pre?'Pagaste con el celular':'Nuevo cobro';
   $('#q-save').textContent=pre?'Confirmar gasto':'Guardar gasto';
-  $('#sheet').hidden=false;
+  showSheet($('#sheet'));
   if(pre){setTimeout(()=>$('#q-save').focus(),50);const g=guessCat(pre.where);if(!g)toast('Elige la categoría y confirma')}
   else setTimeout(()=>$('#q-amt').focus(),50);
 }
@@ -647,7 +701,19 @@ function hashGasto(h){
   return {amt:+m[1],where:(m[2]||'').replace(/[_~.]+/g,' ').replace(/-+$/,'').trim()};
 }
 function clearHash(){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
-function closeQuick(){$('#sheet').hidden=true;if(hashGasto())clearHash()}
+function closeQuick(){hideSheet($('#sheet'));if(hashGasto())clearHash()}
+function showSheet(el){clearTimeout(el._t);el.classList.remove('closing');const sh=el.querySelector('.sheet');if(sh){sh.style.transform='';sh.style.transition=''}el.hidden=false}
+function hideSheet(el,cb){
+  clearTimeout(el._t);
+  if(el.hidden||RM){el.hidden=true;el.classList.remove('closing');if(cb)cb();return}
+  el.classList.add('closing');el._t=setTimeout(()=>{el.hidden=true;el.classList.remove('closing');if(cb)cb()},230);
+}
+function dragToClose(bg,close){
+  const sh=bg.querySelector('.sheet');let y0=null,dy=0;
+  sh.addEventListener('touchstart',e=>{const t=e.target;y0=(sh.scrollTop<=0&&!t.closest('input,textarea,select,button,.cats'))?e.touches[0].clientY:null;dy=0},{passive:true});
+  sh.addEventListener('touchmove',e=>{if(y0===null)return;dy=Math.max(0,e.touches[0].clientY-y0);if(dy>0){sh.style.transition='none';sh.style.transform=`translateY(${dy}px)`}},{passive:true});
+  sh.addEventListener('touchend',()=>{if(y0===null)return;y0=null;if(dy>90){close()}else{sh.style.transition='transform .35s cubic-bezier(.3,1.4,.5,1)';sh.style.transform=''}dy=0});
+}
 function parseAviso(t){
   const m=String(t).match(/\$\s?([\d.]+(?:,\d{1,2})?)/)||String(t).match(/(?:monto|compra|cargo|pago)[^\d]{0,20}([\d.]+(?:,\d{1,2})?)/i);
   const w=String(t).match(/\ben\s+([A-Za-zÁÉÍÓÚÑáéíóúñ0-9 .&*'-]{2,30}?)(?:\s+(?:con|el|por|a las|tarjeta)\b|[.,]|$)/i);
@@ -655,6 +721,7 @@ function parseAviso(t){
 }
 $('#fab').addEventListener('click',()=>openQuick());
 $('#q-close').addEventListener('click',closeQuick);
+dragToClose($('#sheet'),closeQuick);
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeQuick();const b=e.target.closest('[data-qcat]');if(b){qCat=b.dataset.qcat;[...document.querySelectorAll('[data-qcat]')].forEach(x=>x.classList.toggle('on',x===b))}});
 $('#q-paste').addEventListener('input',e=>{const r=parseAviso(e.target.value);if(r.amt)$('#q-amt').value=r.amt.toLocaleString('es-CL');if(r.where)$('#q-note').value=r.where});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#sheet').hidden)closeQuick();else if(!$('#settings').hidden)closeSettings()});
@@ -794,11 +861,12 @@ function openSettings(focus){
     <form class="row" id="st-pw"><label>Contraseña nueva<input id="st-p" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label><button class="btn" type="submit">Cambiar contraseña</button></form>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-logout>Cerrar sesión</button><a class="btn" href="privacidad.html" target="_blank" rel="noopener">Privacidad y términos</a></div>
     <form class="row" id="st-del" style="margin-top:6px"><label>Para borrar tu cuenta y todos tus datos, escribe BORRAR<input id="st-d" autocomplete="off" maxlength="10"></label><button class="btn red" type="submit">Borrar mi cuenta</button></form></div>`;
-  $('#settings').hidden=false;
+  showSheet($('#settings'));
   if(focus==='cd')setTimeout(()=>{const el=$('#set-cd');el.scrollIntoView({block:'center'});$('#st-cdl').focus()},60);
 }
-function closeSettings(){$('#settings').hidden=true;$('#set-body').innerHTML=''}
+function closeSettings(){const el=$('#settings');hideSheet(el,()=>{if(el.hidden)$('#set-body').innerHTML=''})}
 $('#gear').addEventListener('click',()=>openSettings());
+dragToClose($('#settings'),closeSettings);
 function exportJSON(){return {app:'mi-esquina',v:1,exported:new Date().toISOString(),data:JSON.parse(JSON.stringify(S))}}
 function importData(raw){
   let j;try{j=JSON.parse(raw)}catch(e){return toast('Eso no parece un respaldo de Mi Esquina')}
@@ -863,7 +931,7 @@ function showAuth(view,msg,kind){
 function authView(v){
   $('#f-login').hidden=v!=='entrar';$('#f-signup').hidden=v!=='crear';$('#f-forgot').hidden=v!=='olvido';$('#f-newpw').hidden=v!=='nueva';
   $('#auth-tabs').hidden=v==='olvido'||v==='nueva';
-  document.querySelectorAll('#auth-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.auth===v));
+  document.querySelectorAll('#auth-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.auth===v));$('#auth-tabs').dataset.on=v==='crear'?'1':'0';
   authMsg('');
   const first={entrar:'#l-email',crear:'#s-nombre',olvido:'#r-email',nueva:'#n-pw'}[v];
   if(first&&matchMedia('(min-width:700px)').matches)setTimeout(()=>{const el=$(first);if(el)el.focus()},30);
@@ -933,6 +1001,7 @@ let pendingHash='';
 {const h=location.hash||'';if(hashGasto(h)||h==='#despertar')pendingHash=h;
  try{const r=new URLSearchParams(location.search).get('ref');if(r)sessionStorage.setItem('esquina.ref',r.slice(0,40))}catch(e){}}
 function teardown(){
+  loadingView=false;
   me=null;email='';S=defaults();dirty.clear();for(const k in timers)clearTimeout(timers[k]);
   disarm();stopRing();ch=null;$('#alarm').hidden=true;$('#sheet').hidden=true;closeSettings();$('#view').innerHTML='';
 }
@@ -942,17 +1011,19 @@ async function boot(session){
     teardown();me=session.user.id;email=session.user.email||'';
     const metaName=str(obj(session.user.user_metadata).nombre,40);
     // 1) lo que hay en este dispositivo, para mostrar algo al instante
-    for(const d of DOCS){try{const c=JSON.parse(localStorage.getItem(cacheKey(d))||'null');if(c){S[d]=clean(d,c.d);if(c.dirty){dirty.add(d);rev[d]=(rev[d]||0)+1}}}catch(e){}}
+    let had=false;
+    for(const d of DOCS){try{const c=JSON.parse(localStorage.getItem(cacheKey(d))||'null');if(c){had=true;S[d]=clean(d,c.d);if(c.dirty){dirty.add(d);rev[d]=(rev[d]||0)+1}}}catch(e){}}
     if(!S.meta.name)S.meta.name=metaName;
     tab='inicio';try{const t=localStorage.getItem('esquina.tab');if(VIEWS[t])tab=t}catch(e){}
     if(/^#(crear|entrar)$/.test(location.hash))clearHash();
     $('#boot').hidden=true;$('#auth').hidden=true;$('#app').hidden=false;$('#nav').hidden=false;$('#fab').hidden=false;
-    entering=true;drawTabs();render();setSync();
+    loadingView=!had;entering=true;drawTabs();render();setSync();
     // 2) lo que hay en la nube
     const {data,error}=await sb.from('user_docs').select('doc,data');
     if(me!==session.user.id)return;
-    if(error){setSync();toast('Sin conexión: usando lo guardado en este dispositivo');}
+    if(error){if(loadingView){loadingView=false;entering=true;render()}setSync();toast('Sin conexión: usando lo guardado en este dispositivo');}
     else{
+      const before=JSON.stringify(S);
       const got={};(data||[]).forEach(r=>got[r.doc]=r.data);
       for(const d of DOCS){
         if(dirty.has(d)){flush(d);continue}
@@ -962,7 +1033,8 @@ async function boot(session){
       }
       if(!S.meta.name){S.meta.name=metaName;save('meta')}
       lastPull=Date.now();
-      drawTabs();render();setSync();
+      if(loadingView){loadingView=false;entering=true;drawTabs();render()}else if(JSON.stringify(S)!==before){drawTabs();render()}
+      setSync();
     }
     if(pendingHash){const h=pendingHash;pendingHash='';clearHash();const g=hashGasto(h);if(g)openQuick(g);else if(h==='#despertar')startChallenge('link')}
   }finally{booting=false}
