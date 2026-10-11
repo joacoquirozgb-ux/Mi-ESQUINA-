@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mi Esquina</title>
+<meta name="description" content="Tus hábitos, tu plata y tu semana en un solo lugar.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://hkhweiduvkggbzfdpiyk.supabase.co wss://hkhweiduvkggbzfdpiyk.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta name="theme-color" content="#F2F3F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1015" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mi Esquina">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="boot" id="boot">Cargando…</div>
+
+<!-- Ingreso -->
+<div class="auth" id="auth" hidden>
+  <div class="auth-in">
+    <a href="./" class="logo">Mi <span>Esquina</span></a>
+    <p class="muted" style="margin:0">Tus hábitos, tu plata y tu semana en un solo lugar.</p>
+    <div class="seg" id="auth-tabs"><button type="button" data-auth="entrar" class="on">Entrar</button><button type="button" data-auth="crear">Crear cuenta</button></div>
+
+    <form class="aform" id="f-login" novalidate>
+      <label>Email<input id="l-email" type="email" autocomplete="email" inputmode="email" required maxlength="200"></label>
+      <label>Contraseña<input id="l-pw" type="password" autocomplete="current-password" required maxlength="72"></label>
+      <button class="btn red" type="submit">Entrar</button>
+      <button type="button" class="linkbtn" data-auth="olvido">¿Olvidaste tu contraseña?</button>
+    </form>
+
+    <form class="aform" id="f-signup" novalidate hidden>
+      <label>Tu nombre<input id="s-nombre" autocomplete="given-name" required maxlength="80"></label>
+      <label>Email<input id="s-email" type="email" autocomplete="email" inputmode="email" required maxlength="200"></label>
+      <label>Contraseña<input id="s-pw" type="password" autocomplete="new-password" required minlength="8" maxlength="72"><span class="note" style="font-weight:500">Mínimo 8 caracteres</span></label>
+      <fieldset><legend>¿Qué te cuesta más ordenar? <span class="muted" style="font-weight:500">(opcional)</span></legend>
+        <div class="picks" data-pick="dolor"><button type="button" data-v="habitos">Mis hábitos</button><button type="button" data-v="plata">Mi plata</button><button type="button" data-v="tiempo">Mi tiempo</button><button type="button" data-v="todo">Todo junto</button></div></fieldset>
+      <fieldset><legend>Cuando salga la versión completa, ¿pagarías $2.990 al mes? <span class="muted" style="font-weight:500">(opcional)</span></legend>
+        <div class="picks" data-pick="pagaria"><button type="button" data-v="si">Sí</button><button type="button" data-v="quizas">Quizás</button><button type="button" data-v="no">No</button></div></fieldset>
+      <input type="text" id="s-web" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <label class="check"><input type="checkbox" id="s-ok"> <span>Acepto la <a href="privacidad.html" target="_blank" rel="noopener">política de privacidad y los términos</a></span></label>
+      <button class="btn red" type="submit">Crear mi cuenta</button>
+    </form>
+
+    <form class="aform" id="f-forgot" novalidate hidden>
+      <b>Recuperar contraseña</b>
+      <p class="note" style="margin:0;font-size:14px">Escribe tu email y te mandamos un enlace para crear una contraseña nueva.</p>
+      <label>Email<input id="r-email" type="email" autocomplete="email" inputmode="email" required maxlength="200"></label>
+      <button class="btn pri" type="submit">Enviar enlace</button>
+      <div id="r-help" hidden style="display:grid;gap:10px">
+        <p style="margin:0;font-size:14px">No pudimos mandarte el correo ahora. Déjanos un mensaje y te ayudamos a recuperar tu cuenta.</p>
+        <label>Mensaje<textarea id="r-msg" maxlength="2000">Olvidé mi contraseña.</textarea></label>
+        <button class="btn" type="button" id="r-send">Enviar mensaje</button>
+      </div>
+      <button type="button" class="linkbtn" data-auth="entrar">Volver a entrar</button>
+    </form>
+
+    <form class="aform" id="f-newpw" novalidate hidden>
+      <b>Crea tu contraseña nueva</b>
+      <label>Contraseña nueva<input id="n-pw" type="password" autocomplete="new-password" required minlength="8" maxlength="72"></label>
+      <button class="btn red" type="submit">Guardar y entrar</button>
+    </form>
+
+    <div class="amsg" id="a-msg" role="status" aria-live="polite"></div>
+    <p class="note" style="text-align:center;margin:0"><a href="privacidad.html" style="color:inherit">Privacidad y términos</a> · Hecho en Chile</p>
+  </div>
+</div>
+
+<!-- App -->
+<div class="wrap" id="app" hidden>
+  <div class="top">
+    <div>
+      <div class="eyebrow" id="today-label">Hoy</div>
+      <h1>Mi <span>Esquina</span></h1>
+      <div class="sync" id="sync" style="margin-top:6px"><i></i><span>Cargando…</span></div>
+    </div>
+    <div class="acts">
+      <button class="gear" type="button" id="gear" aria-label="Ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </div>
+  </div>
+  <main id="view"><div class="empty">Cargando tus datos…</div></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="overlay" id="night" hidden role="dialog" aria-label="Modo noche">
+  <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#6B7280">Modo noche</div>
+  <div class="clock num" id="n-clock">00:00</div>
+  <div id="n-info" style="font-weight:600"></div>
+  <div style="font-size:13px;color:#6B7280;max-width:32ch">Deja el teléfono cargando y con esta pantalla abierta. Si cierras la app, la alarma no suena.</div>
+  <button class="btn" type="button" id="n-off">Desarmar</button>
+</div>
+<div class="overlay" id="alarm" hidden role="dialog" aria-label="Reto de despertar"></div>
+<button class="fab" id="fab" type="button" aria-label="Anotar gasto rápido" hidden>+ Gasto</button>
+<div class="sheet-bg" id="sheet" hidden><form class="sheet" id="f-quick" role="dialog" aria-label="Anotar gasto">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b class="eyebrow" id="q-title">Nuevo cobro</b><button type="button" class="x" id="q-close" aria-label="Cerrar">×</button></div>
+  <label class="note" for="q-paste">¿Te llegó un aviso del banco? Pégalo aquí y leo el monto y el comercio</label>
+  <input id="q-paste" placeholder="Ej: Compra por $12.500 en LIDER con tarjeta ****1234">
+  <input id="q-amt" class="amt num" inputmode="numeric" placeholder="$0" required aria-label="Monto en pesos">
+  <div class="cats" id="q-cats"></div>
+  <input id="q-note" placeholder="Dónde o qué (opcional)" maxlength="120">
+  <button class="btn red" type="submit" id="q-save" style="padding:13px">Guardar gasto</button>
+</form></div>
+<div class="sheet-bg" id="settings" hidden><div class="sheet" id="set-body" role="dialog" aria-label="Ajustes"></div></div>
+<nav class="tabs" aria-label="Secciones" id="nav" hidden><div class="in" id="tabs"></div></nav>
+<script src="vendor/supabase.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
