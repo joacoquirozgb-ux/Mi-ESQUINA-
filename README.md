@@ -1,6 +1,8 @@
 # Mi Esquina
 
-Tus hábitos, tu plata y tu semana en un solo lugar. Página estática (HTML, CSS y JS sin compilación) publicada con GitHub Pages; las cuentas y los datos viven en Supabase.
+Tus hábitos, tu plata y tu semana en un solo lugar: https://joacoquirozgb-ux.github.io/Mi-ESQUINA-/
+
+Página estática (HTML, CSS y JS sin compilación) publicada con GitHub Pages; las cuentas y los datos viven en Supabase.
 
 - `index.html`: portada
 - `app.html`, `app.js`, `app.css`: la app
