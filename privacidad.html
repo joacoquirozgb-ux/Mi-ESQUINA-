@@ -47,15 +47,17 @@ li{margin:4px 0}
     <li><b>Respuestas del registro (opcionales):</b> qué te cuesta más ordenar y si pagarías por la app. Nos ayudan a decidir qué mejorar.</li>
     <li><b>Lo que anotas:</b> hábitos, agua, despertares, gastos e ingresos, presupuestos, proyectos, suscripciones, tu agenda semanal y si cumpliste cada bloque.</li>
     <li><b>Avisos del instructor (solo si los activas):</b> la dirección de avisos que entrega tu navegador (a través de Google, Apple, Mozilla o Microsoft, según tu teléfono) y el texto de tus próximos recordatorios, por ejemplo «Entrenar · 07:00» o «¿Cumpliste Estudio?». Los recordatorios se borran a más tardar un día después de enviarse.</li>
+    <li><b>Tu plan y tus pagos (solo si pagas):</b> qué plan tienes, hasta cuándo está pagado, montos, fechas y los números de referencia de Mercado Pago. Los datos de tu tarjeta los maneja Mercado Pago: nosotros nunca los vemos.</li>
     <li><b>Mensajes</b> que nos envías por Escríbenos o por el formulario de ayuda, con el email para responderte.</li>
     <li><b>Datos técnicos mínimos:</b> al crear una cuenta guardamos una huella cifrada de tu conexión (no tu dirección IP) durante 24 horas para frenar registros masivos. Nuestros proveedores registran datos técnicos de acceso por seguridad.</li>
   </ul>
-  <p>No pedimos datos de tu tarjeta ni tu RUT, y la app no se conecta a tu banco. Los gastos los anotas tú, o los envía un atajo de tu propio teléfono.</p>
+  <p>No guardamos datos de tu tarjeta ni tu RUT, y la app no se conecta a tu banco. Los gastos los anotas tú, o los envía un atajo de tu propio teléfono.</p>
 
   <h2>Para qué los usamos</h2>
   <ul>
     <li>Para que la app funcione y tus datos estén en todos tus dispositivos.</li>
     <li>Para mandarte los recordatorios del instructor a la hora, aunque tengas la app cerrada.</li>
+    <li>Para cobrar tu plan, si eliges uno, y saber hasta cuándo está pagado.</li>
     <li>Para responder tus mensajes.</li>
     <li>Para mejorar Mi Esquina con números generales (por ejemplo, cuántas personas se registran), sin mirar lo que anotas.</li>
   </ul>
@@ -64,13 +66,14 @@ li{margin:4px 0}
   <h2>Dónde se guardan y cómo se protegen</h2>
   <ul>
     <li>Tus datos se guardan en <b>Supabase</b>, en servidores ubicados en São Paulo, Brasil. El sitio se publica en un servicio de alojamiento web. Ambos actúan como encargados de tratamiento y no pueden usar tus datos para fines propios.</li>
+    <li>Si pagas, el pago se hace en <b>Mercado Pago</b>. Para iniciarlo le enviamos tu email y el plan que elegiste. Mercado Pago trata tus datos de pago según su propia política de privacidad.</li>
     <li>Toda la conexión va cifrada (HTTPS).</li>
     <li>La base de datos tiene reglas que impiden que una cuenta lea o cambie los datos de otra.</li>
     <li>La app guarda una copia en tu dispositivo para funcionar sin conexión. Esa copia se borra al cerrar sesión.</li>
   </ul>
 
   <h2>Cuánto tiempo los guardamos</h2>
-  <p>Mientras tengas tu cuenta. Si la borras, tus datos se eliminan de inmediato de la base de datos. Las copias de respaldo del proveedor pueden conservarlos por un periodo corto antes de borrarse solas.</p>
+  <p>Mientras tengas tu cuenta. Si la borras, tus datos se eliminan de inmediato de la base de datos. Las copias de respaldo del proveedor pueden conservarlos por un periodo corto antes de borrarse solas. El registro de pagos (monto, fecha y plan, sin nada de lo que anotaste) se conserva aunque borres tu cuenta, porque la ley tributaria obliga a guardarlo.</p>
 
   <h2>Tus derechos</h2>
   <p>De acuerdo con la ley chilena de protección de datos personales (Ley 19.628 y Ley 21.719), puedes:</p>
@@ -86,7 +89,10 @@ li{margin:4px 0}
 
   <h1 style="margin-top:44px;font-size:clamp(30px,6vw,42px)">Términos de uso</h1>
   <ul>
-    <li><b>Beta gratuita.</b> Mi Esquina está en prueba y hoy es gratis. Si en el futuro cobramos, te avisaremos antes dentro de la app y nunca te cobraremos sin que lo aceptes.</li>
+    <li id="planes"><b>Prueba gratis.</b> Mientras el cobro no esté activo, Mi Esquina es gratis. Cuando se active te avisamos en la app, y cada cuenta tiene 14 días gratis con todo. Al terminar la prueba, para seguir anotando necesitas un plan. Tus datos siguen guardados: puedes verlos, descargarlos o borrarlos aunque no pagues.</li>
+    <li><b>Planes.</b> Anual: un solo pago de $29.990 por 12 meses, que no se renueva solo. Mensual: $2.990 al mes para las primeras 100 cuentas (precio fundador, que mantienes mientras sigas suscrito) y $4.990 para las demás; se cobra solo cada mes a tu tarjeta hasta que lo canceles. Precios en pesos chilenos con IVA incluido.</li>
+    <li><b>Cancelar.</b> Cancelas el plan mensual cuando quieras en Ajustes → Tu plan, o desde tu cuenta de Mercado Pago. No se te vuelve a cobrar y sigues con acceso hasta el final del periodo pagado. Si borras tu cuenta, tu plan mensual se cancela también.</li>
+    <li><b>Pagos.</b> Se hacen en Mercado Pago y nunca se cobra nada sin que lo aceptes ahí. Si cambiamos los precios, el cambio no afecta lo que ya pagaste ni el monto de una suscripción mensual que tengas activa. Si tienes un problema con un cobro, escríbenos por Escríbenos.</li>
     <li><b>Uso personal.</b> La cuenta es tuya y es personal. Cuida tu contraseña.</li>
     <li><b>Sin garantías.</b> Hacemos lo posible para que la app funcione bien y tus datos estén seguros, pero puede tener errores o interrupciones. Descarga un respaldo de vez en cuando.</li>
     <li><b>No es asesoría.</b> Las cifras, rachas y análisis son para ordenarte. No son asesoría financiera, médica ni deportiva. Antes de un cambio grande de entrenamiento o salud, consulta a un profesional.</li>

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mi Esquina · Ordena tu vida como un peleador</title>
-<meta name="description" content="La app para los que entrenan, estudian, trabajan y emprenden. Hábitos con cinturones, tu plata y tu semana en un solo lugar. Gratis durante la beta.">
+<meta name="description" content="La app para los que entrenan, estudian, trabajan y emprenden. Hábitos con cinturones, tu plata y tu semana en un solo lugar. Prueba gratis, sin tarjeta.">
 <meta property="og:title" content="Mi Esquina · Ordena tu vida como un peleador">
-<meta property="og:description" content="Hábitos con cinturones, tu plata y tu semana en un solo lugar. Gratis durante la beta.">
+<meta property="og:description" content="Hábitos con cinturones, tu plata y tu semana en un solo lugar. Prueba gratis, sin tarjeta.">
 <meta property="og:image" content="https://joacoquirozgb-ux.github.io/Mi-ESQUINA-/hero.jpg">
 <meta property="og:url" content="https://joacoquirozgb-ux.github.io/Mi-ESQUINA-/">
 <meta property="og:type" content="website">
@@ -68,6 +68,15 @@ section{padding-block:56px;border-top:1px solid var(--line)}
 .join{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
 .price{font-family:var(--display);font-size:64px;line-height:1}
 .price s{font-size:28px;color:var(--muted);margin-left:8px}
+.plans2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.p2{border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:4px;align-content:start;background:var(--surface)}
+.p2.best{border:2px solid var(--red)}
+.p2 .n{font-weight:800;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.p2 .price{font-size:44px}
+.p2 .price s{font-size:20px}
+.p2 .tag{display:inline-block;background:var(--red);color:#fff;font-weight:800;font-size:11px;letter-spacing:.1em;text-transform:uppercase;border-radius:999px;padding:3px 9px;justify-self:start;margin-bottom:4px}
+@media (max-width:560px){.plans2{grid-template-columns:1fr}}
+
 form{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:14px}
 label{display:grid;gap:6px;font-size:14px;font-weight:700}
 input,select{font:inherit;color:inherit;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px;width:100%;min-width:0}
@@ -104,7 +113,7 @@ footer a{color:inherit}
       <div class="eyebrow">Para los que entrenan, estudian y emprenden</div>
       <h1>Ordena tu vida <em>como un peleador</em></h1>
       <p class="lead">Tus hábitos, tu plata y tu semana en una sola app. Cada día es un round. Cada hábito suma puntos para subir de cinturón.</p>
-      <div class="cta-row"><a class="btn red" href="app.html#crear">Crear mi cuenta gratis</a><span class="note">Gratis durante la beta. Sin tarjeta.</span></div>
+      <div class="cta-row"><a class="btn red" href="app.html#crear">Crear mi cuenta gratis</a><span class="note" id="hero-note">Gratis durante la beta. Sin tarjeta.</span></div>
       <div class="corners muted"><span><i style="background:var(--red)"></i>Deporte</span><span><i style="background:var(--blue)"></i>Estudio</span><span><i style="background:#15897A"></i>Trabajo</span><span><i style="background:#C77A00"></i>Familia</span></div>
     </div>
     <div class="phone"><img alt="Pantalla de inicio de Mi Esquina: round del día, cinturón y vaso de agua" src="hero.jpg" width="600" height="1298"></div>
@@ -143,21 +152,24 @@ footer a{color:inherit}
     <div class="join">
       <div>
         <div class="eyebrow">Precio</div>
-        <h2 class="sec-title">Súbete al ring gratis</h2>
-        <p>Mientras dure la beta, Mi Esquina es gratis. Cuando salga la versión completa costará $4.990 al mes, y los primeros 100 en crear su cuenta quedan con precio de fundador.</p>
-        <div class="price">$2.990<s>$4.990</s></div>
-        <p class="muted" style="margin-top:6px">al mes, cuando termine la beta. Te avisaremos antes y nunca cobramos sin que lo aceptes.</p>
+        <h2 class="sec-title" id="p-tit">Súbete al ring gratis</h2>
+        <p id="p-intro">Mientras dure la beta, Mi Esquina es gratis. Cuando termine tendrás 14 días de prueba con todo y después eliges tu plan. Las primeras 100 cuentas quedan con precio de fundador.</p>
+        <div class="plans2">
+          <div class="p2 best"><span class="tag">Más conveniente</span><div class="n">Anual</div><div class="price" id="p-anual">$29.990</div><div class="muted">al año, en un solo pago. Equivale a <b id="p-anual-mes">$2.499</b> al mes.</div></div>
+          <div class="p2"><div class="n">Mensual</div><div class="price"><span id="p-mensual">$2.990</span><s id="p-normal">$4.990</s></div><div class="muted" id="p-mtxt">al mes. Precio de fundador para las primeras 100 cuentas<span id="p-cupos"></span>, mientras sigas suscrito.</div></div>
+        </div>
+        <p class="muted" style="margin-top:12px" id="p-nota">Nunca cobramos sin que lo aceptes: pagas tú, en Mercado Pago, cuando eliges un plan. Cancelas cuando quieras.</p>
       </div>
       <div class="plan">
-        <span class="tag">Beta abierta</span>
-        <div class="price">$0</div>
+        <span class="tag" id="p-tag">Beta abierta</span>
+        <div class="price" id="p-hoy">$0</div>
         <ul class="list">
+          <li>Instructor con voz que te exige cumplir.</li>
           <li>Hábitos, agua y despertador con cinturones y rachas.</li>
           <li>Gastos, ingresos y presupuestos en pesos.</li>
-          <li>Agenda semanal y proyectos.</li>
-          <li>Tus datos en la nube, en todos tus dispositivos.</li>
+          <li>Agenda semanal y proyectos, con tus datos en todos tus dispositivos.</li>
         </ul>
-        <a class="btn red" href="app.html#crear">Crear mi cuenta gratis</a>
+        <a class="btn red" href="app.html#crear" id="p-cta">Crear mi cuenta gratis</a>
         <a class="btn ghost" href="app.html" style="justify-self:start">Ya tengo cuenta</a>
       </div>
     </div>
@@ -165,5 +177,6 @@ footer a{color:inherit}
 
   <footer>© 2026 Joaquín Quiroz · Todos los derechos reservados · Hecho en Chile · <a href="privacidad.html">Privacidad y términos</a></footer>
 </div>
+<script src="landing.js" defer></script>
 </body>
 </html>

@@ -21,7 +21,7 @@ const usd=n=>'US$'+(Math.round((n||0)*100)/100).toLocaleString('es-CL',{minimumF
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DIAS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const dow=k=>{const [y,m,d]=k.split('-').map(Number);return (new Date(y,m-1,d).getDay()+6)%7};
-const toast=t=>{const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),1800)};
+const toast=t=>{if(Date.now()-(toast.mute||0)<500)return;const el=$('#toast');toast.at=Date.now();el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),1800)};
 const isDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s);
 const isHM=s=>typeof s==='string'&&/^\d{2}:\d{2}$/.test(s);
 const sid=v=>String(v??'').replace(/[^\w-]/g,'').slice(0,40)||uid();
@@ -145,29 +145,33 @@ const cacheKey=d=>'esquina:'+me+':'+d;
 function cacheWrite(doc){if(!me)return;try{localStorage.setItem(cacheKey(doc),JSON.stringify({d:S[doc],dirty:dirty.has(doc)}))}catch(e){}}
 function save(doc){
   if(!me)return;
+  if(locked()){toast.mute=Date.now();if(Date.now()-(toast.at||0)<400)$('#toast').classList.remove('show');blockedSave(doc);return}
   rev[doc]=(rev[doc]||0)+1;dirty.add(doc);cacheWrite(doc);setSync();
   clearTimeout(timers[doc]);timers[doc]=setTimeout(()=>flush(doc),500);
   if(doc==='week'||doc==='habits'||doc==='meta')syncAvisosSoon();
 }
 async function flush(doc){
-  if(!me||!dirty.has(doc))return;
+  if(!me||!dirty.has(doc)||locked())return;
   if(writing[doc]){clearTimeout(timers[doc]);timers[doc]=setTimeout(()=>flush(doc),400);return}
   const r=rev[doc],who=me;writing[doc]=true;
   try{
-    const {error}=await sb.from('user_docs').upsert({user_id:who,doc,data:JSON.parse(JSON.stringify(S[doc]))});
+    const data=JSON.parse(JSON.stringify(S[doc]));
+    const {error}=await sb.from('user_docs').upsert({user_id:who,doc,data});
     if(error)throw error;
-    fails[doc]=0;
+    fails[doc]=0;if(who===me)base[doc]=JSON.stringify(data);
     if(who===me&&rev[doc]===r){dirty.delete(doc);cacheWrite(doc)}
   }catch(e){
     if(who!==me)return;
     if(e&&e.code==='23514'){toast('Se llenó el espacio de esta sección. Borra registros antiguos.');dirty.delete(doc);cacheWrite(doc)}
-    else{fails[doc]=(fails[doc]||0)+1;clearTimeout(timers[doc]);timers[doc]=setTimeout(()=>flush(doc),Math.min(60000,2000*2**fails[doc]))}
+    else{if(e&&e.code==='42501')planLoad(); // sin plan vigente: la base no deja guardar
+      fails[doc]=(fails[doc]||0)+1;clearTimeout(timers[doc]);timers[doc]=setTimeout(()=>flush(doc),Math.min(60000,2000*2**fails[doc]))}
   }finally{writing[doc]=false;setSync()}
 }
 async function flushAll(){for(const d of [...dirty]){clearTimeout(timers[d]);await flush(d)}}
 function setSync(){
   const el=$('#sync');if(!el)return;
   const off=!navigator.onLine,pend=dirty.size>0;
+  if(locked()){el.classList.remove('on');el.classList.add('warn');el.querySelector('span').textContent='Solo lectura · elige un plan';return}
   el.classList.toggle('on',!pend&&!off);el.classList.toggle('warn',off||(pend&&Object.values(fails).some(x=>x>0)));
   el.querySelector('span').textContent=off?(pend?'Sin conexión · se guarda al volver':'Sin conexión'):pend?'Guardando…':'Guardado en tu cuenta';
 }
@@ -214,19 +218,20 @@ const ICONS={
   'd-resumen':'<path d="M3 20h18"/><path d="M6.5 16v-4M11 16V7M15.5 16v-6M20 16V4"/>',
   'd-usuarios':'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
   'd-mensajes':'<path d="M21 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.4-5A8.5 8.5 0 1 1 21 12z"/>',
+  'd-cobros':'<circle cx="12" cy="12" r="9"/><path d="M14.8 9.3c-.5-.9-1.6-1.5-2.8-1.5-1.6 0-2.8.8-2.8 2.1 0 2.9 5.6 1.5 5.6 4.3 0 1.3-1.2 2.2-2.9 2.2-1.3 0-2.5-.6-3-1.6M12 6.2v1.6M12 16.5v1.4"/>',
   'd-herr':'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
   'd-salir':'<path d="M10 18l-6-6 6-6M4 12h16"/>'
 };
 const USER_TABS=[['inicio','Inicio'],['habitos','Hábitos'],['dinero','Dinero'],['claude','Proyectos'],['semana','Semana']];
-const OWNER_TABS=[['d-resumen','Resumen'],['d-usuarios','Usuarios'],['d-mensajes','Mensajes'],['d-herr','Enlaces'],['d-salir','Mi app']];
+const OWNER_TABS=[['d-resumen','Resumen'],['d-usuarios','Usuarios'],['d-mensajes','Mensajes'],['d-cobros','Cobros'],['d-herr','Enlaces'],['d-salir','Mi app']];
 let TABS=USER_TABS;
 const TITLES={inicio:['Mi','Esquina'],habitos:['Tus','Hábitos'],dinero:['Tu','Plata'],claude:['Tus','Proyectos'],semana:['Tu','Semana'],
-  'd-resumen':['Panel del','Dueño'],'d-usuarios':['Tu','Gente'],'d-mensajes':['Tus','Mensajes'],'d-herr':['Tus','Herramientas']};
+  'd-resumen':['Panel del','Dueño'],'d-usuarios':['Tu','Gente'],'d-mensajes':['Tus','Mensajes'],'d-cobros':['Tus','Cobros'],'d-herr':['Tus','Herramientas']};
 let tab='inicio', moneyMonth=monthKey(today()), txType='gasto';
 function drawTabs(){
   const pend=owner&&OD.resumen?OD.resumen.mensajes.pendientes:0;
   $('#tabs').innerHTML=TABS.map(([k,n])=>`<button data-tab="${k}" class="${k===tab?'on':''}" aria-current="${k===tab?'page':'false'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>${n}${k==='d-mensajes'&&pend?`<span class="badge num" aria-label="${pend} por responder">${pend}</span>`:''}</button>`).join('');
-  $('#tab-ind').style.setProperty('--i',Math.max(0,TABS.findIndex(x=>x[0]===tab)));
+  $('#tab-ind').style.setProperty('--i',Math.max(0,TABS.findIndex(x=>x[0]===tab)));$('#nav').style.setProperty('--n',TABS.length);
 }
 let slideDir='';
 function go(t){
@@ -278,6 +283,7 @@ function vInicio(){
   const nowHM=pad(new Date().getHours())+':'+pad(new Date().getMinutes());
   const pending=H().list.filter(h=>!doneOn(k)[h.id]).slice(0,3);
   return `
+  ${planCard()}
   ${welcomeCard()}
   ${coachCard()}
   ${alarmCard()}
@@ -566,7 +572,7 @@ function render(){
     reveal(v);
   }else counts.forEach((el,i)=>{const k=ck(el,i),to=+el.dataset.count,from=prevCount[k];prevCount[k]=to;
     if(from!==undefined&&from!==to&&!RM){countUp(el,from,to);el.classList.add('bump')}});
-  if(celebrate){const c=celebrate;celebrate=null;requestAnimationFrame(()=>c())}
+  if(celebrate){const c=celebrate;celebrate=null;if(Date.now()-(toast.mute||0)>500)requestAnimationFrame(()=>c())}
 }
 /* Cada tarjeta entra cuando aparece en pantalla; sus números cuentan desde cero en ese momento */
 function reveal(v){
@@ -624,7 +630,7 @@ const num=v=>{const s=String(v||'').replace(/\s|\$/g,'');if(/,\d{1,2}$/.test(s))
    La seguridad está en Supabase: estas funciones responden "no autorizado" a cualquier otra cuenta.
    Muestra números generales y datos de la cuenta, nunca lo que cada persona anota (así lo dice la política de privacidad). */
 const ICON_CROWN='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l4.5 4.2L12 5l4.5 7.2L21 8l-1.8 10.5H4.8z"/><path d="M5 21.5h14"/></svg>';
-const OD_NEED={'d-resumen':'resumen','d-usuarios':'usuarios','d-mensajes':'mensajes','d-herr':'estado'};
+const OD_NEED={'d-resumen':'resumen','d-usuarios':'usuarios','d-mensajes':'mensajes','d-cobros':'cobros','d-herr':'estado'};
 let owner=false,ownerMode=false,odQ='',odFil='pend',odUser=null;
 const OD={},odBusy={},odErr={},odAt={};
 const LINKS=[
@@ -669,11 +675,11 @@ async function callOwnerFn(body){
 async function odLoad(k,force){
   if(!owner||!k||odBusy[k]||(OD[k]&&!force))return;
   odBusy[k]=true;odErr[k]=false;const who=me,first=!OD[k];
-  const res=k==='estado'?await callOwnerFn({accion:'estado'}):await sb.rpc('dueno_'+k);
+  const res=k==='estado'?await callOwnerFn({accion:'estado'}):k==='cobros'?await odCobros():await sb.rpc('dueno_'+k);
   odBusy[k]=false;if(who!==me||!owner)return;
   if(res.error){odErr[k]=true}else{OD[k]=res.data;odAt[k]=Date.now()}
   if(k==='resumen')ownerBadges();
-  if(ownerMode&&(OD_NEED[tab]===k||tab==='d-herr')){if(first&&OD_NEED[tab]===k)entering=true;render()}
+  if(ownerMode&&(OD_NEED[tab]===k||tab==='d-herr'||(tab==='d-cobros'&&k==='resumen'))){if(first&&OD_NEED[tab]===k)entering=true;render()}
 }
 function odRefresh(){if(!ownerMode)return;odLoad('resumen',true);const k=OD_NEED[tab];if(k&&k!=='resumen')odLoad(k,true)}
 function ownerBadges(){
@@ -757,7 +763,7 @@ function odFiltered(){
 function odUserRows(){
   const L=odFiltered();
   if(!L.length)return `<div class="empty">${odQ?'Nadie coincide con esa búsqueda.':'Todavía no hay cuentas.'}</div>`;
-  return L.map(u=>`<button class="li od-user" type="button" data-od="user" data-id="${esc(u.id)}"><span class="av" style="--c:${avCol(u.id)}">${initial(u)}</span><div class="grow"><div class="t">${esc(u.nombre||'Sin nombre')}${u.dueno?' <span class="chip">Tú</span>':''}${u.suspendida?' <span class="chip" style="color:var(--red)">Suspendida</span>':''}</div><div class="s od-mail">${esc(u.email)}</div><div class="s">Se unió ${rel(u.creado)}${u.actividad?' · activa '+rel(u.actividad):' · aún sin usarla'}</div></div><span class="chev" aria-hidden="true">›</span></button>`).join('');
+  return L.map(u=>`<button class="li od-user" type="button" data-od="user" data-id="${esc(u.id)}"><span class="av" style="--c:${avCol(u.id)}">${initial(u)}</span><div class="grow"><div class="t">${esc(u.nombre||'Sin nombre')}${u.dueno?' <span class="chip">Tú</span>':''}${u.suspendida?' <span class="chip" style="color:var(--red)">Suspendida</span>':''}${u.plan&&new Date(u.vence)>new Date()?` <span class="chip" style="color:var(--ok)">${u.plan==='anual'?'Anual':'Mensual'}${u.fundador?' · fundador':''}</span>`:''}</div><div class="s od-mail">${esc(u.email)}</div><div class="s">Se unió ${rel(u.creado)}${u.actividad?' · activa '+rel(u.actividad):' · aún sin usarla'}</div></div><span class="chev" aria-hidden="true">›</span></button>`).join('');
 }
 const odCount=()=>{const n=odFiltered().length;return n+(n===1?' cuenta':' cuentas')};
 function vOUsuarios(){
@@ -782,17 +788,76 @@ function vOMensajes(){
     </div>`}).join(''):`<div class="empty">${odFil==='pend'?'No hay mensajes por responder. 👊':'No hay mensajes aquí.'}</div>`}</div>`;
 }
 function vOHerr(){
-  const est=OD.estado;if(!odErr.estado)odLoad('estado');if(!odErr.resumen)odLoad('resumen');
+  const est=OD.estado;if(!odErr.estado)odLoad('estado');if(!odErr.resumen)odLoad('resumen');if(!odErr.cobros)odLoad('cobros');
   const pend=OD.resumen?+OD.resumen.mensajes.pendientes||0:null;
   const st=(ok,yes,no)=>`<span class="chip" style="color:${ok?'var(--ok)':'var(--warn)'}"><span class="dot" style="background:currentColor"></span>${ok?yes:no}</span>`;
   return `
   <div class="card"><h2>Estado</h2><div class="list">
     <div class="li"><div class="grow"><div class="t">Mensajes</div><div class="s">Ayuda y "olvidé mi contraseña"</div></div>${pend===null?'<span class="chip">…</span>':st(!pend,'Al día',pend+' por responder')}</div>
+    <button class="li od-user" type="button" data-tab="d-cobros"><div class="grow"><div class="t">Cobro de Mi Esquina</div><div class="s">Planes, Mercado Pago y ventas</div></div>${!OD.cobros?(odErr.cobros?'<span class="chip">Sin datos</span>':'<span class="chip">…</span>'):st(!!OD.cobros.cobro_desde,'Encendido','Apagado')}</button>
     <div class="li"><div class="grow"><div class="t">Pagos con Mercado Pago</div><div class="s">Para cobrar el cotizador</div></div>${!est?(odErr.estado?'<span class="chip">Sin datos</span>':'<span class="chip">…</span>'):st(est.pagos,'Listos','Falta conectar')}</div>
   </div></div>
   ${LINKS.map(([g,items])=>`<div class="sec"><div class="sec-h"><h3>${esc(g)}</h3></div><div class="od-tools">${items.map(([t,d,url,c,ic])=>`<a class="od-tool card" href="${esc(url)}" target="_blank" rel="noopener"><span class="od-ic" style="--c:${c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ic}</svg></span><b>${esc(t)}</b><span class="s">${esc(d)}</span><span class="od-go" aria-hidden="true">↗</span></a>`).join('')}</div></div>`).join('')}`;
 }
-const OVIEWS={'d-resumen':vOResumen,'d-usuarios':vOUsuarios,'d-mensajes':vOMensajes,'d-herr':vOHerr};
+/* Cobros: conectar Mercado Pago, encender el cobro y ver las ventas. Las claves van directo al servidor y nunca vuelven. */
+async function odCobros(){
+  const [a,b]=await Promise.all([callPagoFn({accion:'config'}),sb.rpc('precios_publicos')]);
+  return a.error?a:{data:{...a.data,precios:b.data||null}};
+}
+function odPlanTxt(u){
+  if(!u.plan)return 'Sin plan';
+  const vig=new Date(u.vence)>new Date();
+  if(!vig)return 'Venció el '+dayFmt(u.vence);
+  if(u.plan==='anual')return 'Anual hasta el '+dayFmt(u.vence);
+  return 'Mensual'+(u.fundador?' fundador':'')+(u.estado==='activa'?' · se renueva solo':' · cancelado, hasta el '+dayFmt(u.vence));
+}
+function vOCobros(){
+  const cf=OD.cobros;if(!odErr.resumen)odLoad('resumen');
+  if(!cf)return odWait('cobros');
+  const r=OD.resumen||{},v=r.ventas||{},cb=r.cobro||{},on=!!cf.cobro_desde,modo=cf.modo||'prueba',pr=cf.precios||{},n=x=>+x||0,dias=n(cf.prueba_dias)||14;
+  const st=(ok,yes,no)=>`<span class="chip" style="color:${ok?'var(--ok)':'var(--warn)'}"><span class="dot" style="background:currentColor"></span>${ok?yes:no}</span>`;
+  const listo=cf.token_ok&&cf.secreto;
+  return `
+  <div class="card hero od-hero">
+    <div class="eyebrow">${on?'Cobrando desde el '+esc(dayFmt(cf.cobro_desde)):'Cobro apagado · todos usan la app gratis'}</div>
+    <div class="od-big num" data-count="${n(v.mrr)}" data-kind="clp" data-ck="mrr">${clp(n(v.mrr))}</div>
+    <div class="note">Ingreso mensual estimado · <b class="num">${n(v.activas)}</b> ${n(v.activas)===1?'persona pagando':'personas pagando'}</div>
+  </div>
+  <div class="grid g3" style="margin-top:12px">
+    <div class="card tint" style="--c:var(--ok)"><h2>Pagando ahora</h2><div class="big num" data-count="${n(v.activas)}" data-ck="pag">${n(v.activas)}</div><div class="note">${n(v.anual)} anual · ${n(v.mensual)} mensual${n(v.fundadores)?' · '+n(v.fundadores)+(n(v.fundadores)===1?' fundador':' fundadores'):''}</div></div>
+    <div class="card tint" style="--c:var(--blue)"><h2>Cobrado en 30 días</h2><div class="big num" data-count="${n(r.ingresos30)}" data-kind="clp" data-ck="ing30">${clp(n(r.ingresos30))}</div><div class="note">${clp(n(r.ingresos))} desde el inicio</div></div>
+    <div class="card tint wide" style="--c:var(--a-contenido)"><h2>En prueba gratis</h2><div class="big num" data-count="${n(cb.en_prueba)}" data-ck="prue">${n(cb.en_prueba)}</div><div class="note">${on?n(cb.sin_plan)+(n(cb.sin_plan)===1?' terminó la prueba sin pagar':' terminaron la prueba sin pagar'):'Empieza cuando enciendas el cobro'}</div></div>
+  </div>
+  <div class="sec"><div class="sec-h"><h3>Conecta Mercado Pago</h3>${st(listo,'Listo','Falta')}</div>
+   <div class="card cb-steps">
+    <div class="cb-step"><span class="cb-n${cf.token_ok?' ok':''}">${cf.token_ok?ICON_CHECK:'1'}</span><div class="cb-b">
+      <b>Tu Access Token</b>
+      <div class="note">${cf.token_ok?`Conectado a la cuenta <b>${esc((cf.cuenta||{}).nombre||'de Mercado Pago')}</b>.${(cf.cuenta||{}).prueba?' <span style="color:var(--warn)">Son credenciales de prueba: los pagos no son reales.</span>':''}`:cf.token?'El token guardado ya no funciona. Pega uno nuevo.':'En Mercado Pago Developers crea una aplicación para Mi Esquina (pagos online). En <b>Credenciales de producción</b> copia el <b>Access Token</b>, que empieza con APP_USR-, y pégalo aquí.'}</div>
+      <div><a class="btn sm" href="https://www.mercadopago.cl/developers/panel/app" target="_blank" rel="noopener">Abrir Mercado Pago Developers ↗</a></div>
+      <form class="row cb-form" id="f-cb-token"><label>Access Token<input id="cb-token" type="password" autocomplete="off" spellcheck="false" placeholder="APP_USR-…" maxlength="260"></label><button class="btn" type="submit">${cf.token?'Cambiar':'Guardar'}</button></form></div></div>
+    <div class="cb-step"><span class="cb-n${cf.secreto?' ok':''}">${cf.secreto?ICON_CHECK:'2'}</span><div class="cb-b">
+      <b>Avisos de pago</b>
+      <div class="note">En tu aplicación entra a <b>Webhooks</b> (modo productivo). Pega esta dirección, marca <b>Pagos</b> y <b>Planes y suscripciones</b>, guarda y copia aquí la <b>clave secreta</b> que te muestra.</div>
+      <div class="cb-url"><code id="cb-url">${esc(cf.webhook||'')}</code><button class="btn sm" type="button" data-copy="cb-url">Copiar</button></div>
+      <form class="row cb-form" id="f-cb-sec"><label>Clave secreta${cf.secreto?' (ya está guardada)':''}<input id="cb-sec" type="password" autocomplete="off" spellcheck="false" maxlength="200"></label><button class="btn" type="submit">${cf.secreto?'Cambiar':'Guardar'}</button></form></div></div>
+    <div class="cb-step"><span class="cb-n${on?' ok':''}">${on?ICON_CHECK:'3'}</span><div class="cb-b">
+      <b>${on?'Cobro encendido':'Enciende el cobro'}</b>
+      <div class="note">${on?'Cada persona tiene '+dias+' días gratis desde que se registra (o desde que encendiste el cobro). Si lo apagas, todos vuelven a usarla gratis y quienes pagaron mantienen su plan.':'Al encenderlo, cada persona tiene '+dias+' días gratis desde ese momento y después elige un plan. Antes puedes probar tú: abre la pantalla de planes y paga con tu cuenta (es un pago real, que después puedes devolver desde Mercado Pago).'}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${on?'<button class="btn" type="button" data-od="cb-off">Apagar cobro</button>':`<button class="btn red" type="button" data-od="cb-on"${cf.token_ok?'':' disabled'}>Encender cobro</button>`}<button class="btn" type="button" data-od="cb-plans">Ver la pantalla de planes</button></div></div></div>
+   </div></div>
+  <div class="sec"><div class="sec-h"><h3>Cuando termina la prueba</h3></div>
+    <div class="card"><div class="seg od-seg" role="tablist"><button type="button" data-od="cb-modo" data-v="prueba" class="${modo==='prueba'?'on':''}">Pagar para seguir</button><button type="button" data-od="cb-modo" data-v="basico" class="${modo==='basico'?'on':''}">Básico gratis</button></div>
+    <div class="note" style="margin-top:10px">${modo==='prueba'?'Puede ver y descargar sus datos, pero no anotar nada nuevo hasta que pague.':'Hábitos, plata y semana siguen gratis para siempre; el instructor con voz y sus avisos quedan para quienes pagan.'} La regla la aplica el servidor, así que no se la pueden saltar desde la página.</div></div></div>
+  <div class="sec"><div class="sec-h"><h3>Precios</h3><span class="note">Con IVA incluido</span></div>
+    <div class="card"><div class="list od-kv">
+      <div class="li"><span class="s">Anual (un pago)</span><b class="num">${clp(n(pr.anual)||29990)}</b></div>
+      <div class="li"><span class="s">Mensual fundador</span><b class="num">${clp(n(pr.mensual)||2990)}</b></div>
+      <div class="li"><span class="s">Mensual desde la cuenta 101</span><b class="num">${clp(n(pr.normal)||4990)}</b></div>
+      <div class="li"><span class="s">Cupos de fundador libres</span><b class="num">${n(pr.cupos)} de 100</b></div>
+    </div><div class="note" style="margin-top:8px">Las primeras 100 cuentas pagan el precio fundador mientras sigan suscritas, como dice tu página de inicio.</div></div></div>
+  <div class="od-foot"><span class="note">Mercado Pago descuenta su comisión de cada pago.</span><button class="btn sm" type="button" data-od="refresh">Actualizar</button></div>`;
+}
+const OVIEWS={'d-resumen':vOResumen,'d-usuarios':vOUsuarios,'d-mensajes':vOMensajes,'d-cobros':vOCobros,'d-herr':vOHerr};
 function odSheetHTML(u){
   return `
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
@@ -806,6 +871,7 @@ function odSheetHTML(u){
     <div class="li"><span class="s">Le cuesta más</span><b>${u.dolor?DOLOR[u.dolor]||'—':'No respondió'}</b></div>
     <div class="li"><span class="s">¿Pagaría $2.990?</span><b>${u.pagaria?PAGA[u.pagaria]||'—':'No respondió'}</b></div>
     <div class="li"><span class="s">Llegó desde</span><b>${esc(u.origen||'Directo')}</b></div>
+    <div class="li"><span class="s">Plan</span><b>${esc(odPlanTxt(u))}</b></div>
   </div>
   <a class="btn pri" href="${esc(mailto(u.email,'Mi Esquina','Hola'+(u.nombre?' '+u.nombre.split(' ')[0]:'')+',\n\n'))}">Escribirle un correo</a>
   ${u.dueno?'<div class="note" style="text-align:center">Esta es tu cuenta de dueño. Para cambiarla usa Ajustes.</div>':`
@@ -821,7 +887,7 @@ function closeOdSheet(){const el=$('#od-sheet');odUser=null;hideSheet(el,()=>{if
 function odRedraw(){if(!ownerMode)return;if(tab==='d-usuarios'){const l=$('#od-list');if(l){l.innerHTML=odUserRows();$('#od-count').textContent=odCount();return}}render()}
 function odCSV(){
   const cell=v=>{let x=String(v??'');if(/^[=+\-@\t\r]/.test(x))x="'"+x;return '"'+x.replace(/"/g,'""')+'"'};
-  const rows=[['Nombre','Email','Se unió','Último ingreso','Última vez que usó la app','Le cuesta más','Pagaría $2.990','Llegó desde','Suspendida']].concat(odFiltered().map(u=>[u.nombre,u.email,fullDate(u.creado),fullDate(u.ingreso),u.actividad?fullDate(u.actividad):'',u.dolor?DOLOR[u.dolor]:'',u.pagaria?PAGA[u.pagaria]:'',u.origen||'',u.suspendida?'Sí':'No']));
+  const rows=[['Nombre','Email','Se unió','Último ingreso','Última vez que usó la app','Le cuesta más','Pagaría $2.990','Llegó desde','Suspendida','Plan']].concat(odFiltered().map(u=>[u.nombre,u.email,fullDate(u.creado),fullDate(u.ingreso),u.actividad?fullDate(u.actividad):'',u.dolor?DOLOR[u.dolor]:'',u.pagaria?PAGA[u.pagaria]:'',u.origen||'',u.suspendida?'Sí':'No',odPlanTxt(u)]));
   const blob=new Blob(['﻿'+rows.map(r=>r.map(cell).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mi-esquina-cuentas-'+today()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
 }
@@ -837,6 +903,17 @@ document.addEventListener('click',async e=>{
   if(a==='close'){closeOdSheet();return}
   if(a==='csv'){odCSV();return}
   if(a==='fil'){odFil=t.dataset.v;render();return}
+  if(a==='cb-plans'){openPlans();return}
+  if(a==='cb-on'||a==='cb-off'||a==='cb-modo'){
+    const body=a==='cb-modo'?{accion:'cobro',modo:t.dataset.v}:{accion:'cobro',on:a==='cb-on'};
+    if(a==='cb-modo'&&OD.cobros&&OD.cobros.modo===t.dataset.v)return;
+    if(a==='cb-on'&&!confirm('¿Encender el cobro? Cada persona tendrá '+((OD.cobros&&OD.cobros.prueba_dias)||14)+' días gratis desde hoy y después tendrá que elegir un plan para seguir.'))return;
+    if(a==='cb-off'&&!confirm('¿Apagar el cobro? Todos vuelven a usar la app gratis. Quienes ya pagaron mantienen su plan.'))return;
+    t.disabled=true;const res=await callPagoFn(body);t.disabled=false;
+    if(res.error)return toast(res.error);
+    toast(a==='cb-on'?'Cobro encendido':a==='cb-off'?'Cobro apagado':'Listo');
+    await Promise.all([odLoad('cobros',true),odLoad('resumen',true),planLoad()]);return;
+  }
   if(a==='done'){
     const id=+t.dataset.id,v=t.dataset.v==='1',m=(OD.mensajes||[]).find(x=>+x.id===id);if(!m)return;
     m.atendido=v;if(OD.resumen)OD.resumen.mensajes.pendientes=Math.max(0,OD.resumen.mensajes.pendientes+(v?-1:1));ownerBadges();render();toast(v?'Marcado como atendido':'Vuelve a pendientes');
@@ -862,6 +939,17 @@ document.addEventListener('submit',async e=>{
   if(res.error){b.disabled=false;b.textContent='Borrar cuenta';return toast(res.error)}
   OD.usuarios=OD.usuarios.filter(x=>x.id!==id);closeOdSheet();toast('Cuenta borrada');odLoad('resumen',true);odRedraw();
 });
+document.addEventListener('submit',async e=>{
+  const id=e.target.id;if(id!=='f-cb-token'&&id!=='f-cb-sec')return;e.preventDefault();if(!owner)return;
+  const inp=e.target.querySelector('input'),val=inp.value.trim(),b=e.target.querySelector('button'),lbl=b.textContent;
+  if(!val)return toast('Pega la clave primero');
+  b.disabled=true;b.textContent='Revisando…';
+  const res=await callPagoFn(id==='f-cb-token'?{accion:'claves',token:val}:{accion:'claves',secreto:val});
+  b.disabled=false;b.textContent=lbl;
+  if(res.error)return toast(res.error);
+  inp.value='';toast(id==='f-cb-token'?'Conectado a '+(((res.data||{}).cuenta||{}).nombre||'Mercado Pago'):'Clave secreta guardada');
+  odLoad('cobros',true);
+});
 document.addEventListener('input',e=>{if(e.target.id!=='od-q')return;odQ=e.target.value.slice(0,80);const l=$('#od-list');if(l){l.innerHTML=odUserRows();$('#od-count').textContent=odCount()}});
 $('#od-sheet').addEventListener('click',e=>{if(e.target.id==='od-sheet')closeOdSheet()});
 dragToClose($('#od-sheet'),closeOdSheet);
@@ -884,6 +972,8 @@ document.addEventListener('click',e=>{
   if(ds.tab)return go(ds.tab);
   if(ds.go)return go(ds.go);
   if(ds.settings!==undefined){openSettings(ds.settings);return}
+  if(ds.planes!==undefined){if(!$('#settings').hidden)closeSettings();openPlans();return}
+  if(ds.payCheck!==undefined){t.disabled=true;payCheck(true).finally(()=>{t.disabled=false});return}
   if(ds.onb!==undefined){S.meta.onboarded=true;save('meta');render();return}
   if(ds.plan){const k=today(),v=+ds.v,cur=planDone(k,ds.plan),b=S.week.blocks.find(x=>x.id===ds.plan);if(!b)return;
     setPlan(k,ds.plan,cur===v?null:v);
@@ -932,6 +1022,7 @@ document.addEventListener('submit',e=>{
   const id=e.target.id;
   if(e.target.closest('#auth')||e.target.closest('#settings')||e.target.closest('#od-sheet'))return; // los manejan sus propias funciones
   e.preventDefault();if(!me)return;const v=s=>($('#'+s)||{}).value||'';
+  if(id.startsWith('f-cb'))return; // formularios de Cobros del panel del dueño
   if(id==='f-quick'){const amt=num(v('q-amt'));if(!(amt>0))return toast('Escribe el monto');const note=v('q-note').trim().slice(0,120);S.money.tx.push({id:uid(),type:'gasto',amt,cat:qCat,date:today(),note});if(note){S.money.merchants=S.money.merchants||{};S.money.merchants[mKey(note)]=qCat}save('money');closeQuick();toast('Gasto anotado: '+clp(amt));render();return}
   if(id==='f-alarm'){AL().time=isHM(v('al-time'))?v('al-time'):'06:30';AL().ex=v('al-ex');save('meta');toast('Despertador a las '+AL().time)}
   if(id==='f-water'){const g=num(v('w-goal'));if(g>=.5&&g<=10){W().goal=Math.round(g*1000);save('habits');toast('Meta guardada')}else return toast('Escribe una meta entre 0,5 y 10 litros')}
@@ -1009,7 +1100,7 @@ $('#q-close').addEventListener('click',closeQuick);
 dragToClose($('#sheet'),closeQuick);
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeQuick();const b=e.target.closest('[data-qcat]');if(b){qCat=b.dataset.qcat;[...document.querySelectorAll('[data-qcat]')].forEach(x=>x.classList.toggle('on',x===b))}});
 $('#q-paste').addEventListener('input',e=>{const r=parseAviso(e.target.value);if(r.amt)$('#q-amt').value=r.amt.toLocaleString('es-CL');if(r.where)$('#q-note').value=r.where});
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#od-sheet').hidden)closeOdSheet();else if(!$('#sheet').hidden)closeQuick();else if(!$('#settings').hidden)closeSettings()});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#plans').hidden)closePlans();else if(!$('#od-sheet').hidden)closeOdSheet();else if(!$('#sheet').hidden)closeQuick();else if(!$('#settings').hidden)closeSettings()});
 window.addEventListener('hashchange',()=>{if(!me){const h=location.hash||'';if(hashGasto(h)||h==='#despertar'){pendingHash=h;authMsg('Entra para anotar tu gasto.')}else if(h==='#coach')pendingHash=h;return}const g=hashGasto();if(g)openQuick(g);else if(location.hash==='#despertar'&&!ch)startChallenge('link');else if(location.hash==='#coach'){clearHash();setTimeout(coachTick,300)}});
 
 /* ---------- despertador ---------- */
@@ -1215,7 +1306,7 @@ function pickVoice(){
   return null;
 }
 function say(t){
-  if(!canSpeak||!CO().voice||!t)return;
+  if(!canSpeak||!CO().voice||!t||Date.now()-(toast.mute||0)<500)return;
   try{const sp=speechSynthesis;sp.cancel();
     const u=new SpeechSynthesisUtterance(String(t).replace(/[^\p{L}\p{N}\p{P}\s]/gu,'').slice(0,320)),v=pickVoice(),tn=CO().tone;
     if(v){u.voice=v;u.lang=v.lang}else u.lang='es-CL';
@@ -1285,7 +1376,7 @@ function coachDue(){
 let co=null;
 function coachBlocked(){
   const a=document.activeElement;
-  return !me||ownerMode||loadingView||document.visibilityState!=='visible'||!$('#alarm').hidden||!$('#night').hidden||$('#app').hidden||
+  return !me||ownerMode||loadingView||!premium()||document.visibilityState!=='visible'||!$('#alarm').hidden||!$('#night').hidden||$('#app').hidden||
     [...document.querySelectorAll('.sheet-bg')].some(x=>!x.hidden)||!!(a&&a.closest&&a.closest('#view')&&a.matches('input,textarea,select'));
 }
 function coachTick(){
@@ -1326,6 +1417,7 @@ function coachLine(){
 }
 let pushDev='na';
 function coachCard(){
+  if(!premium())return ''; // sin plan el instructor descansa; la tarjeta del plan lo explica
   const c=CO();
   if(!c.on)return `<div class="card co-card off"><div class="co-head"><span class="co-av">${ICON_WHISTLE}</span><div style="flex:1;min-width:0"><div class="eyebrow">Tu instructor</div><div class="co-line">Está apagado. Nadie te va a exigir nada.</div></div></div><div class="co-btns"><button class="btn pri" type="button" data-co-on>Encender</button></div></div>`;
   const k=today(),nowHM=hm(new Date()),tb=dayBlocks(k),ok=tb.filter(b=>planDone(k,b.id)===1).length,wi=waterInfo(),hn=H().list.length,hd=H().list.filter(h=>doneOn(k)[h.id]).length;
@@ -1502,7 +1594,7 @@ function syncAvisosSoon(){if(!me)return;clearTimeout(avT);avT=setTimeout(()=>syn
 async function syncAvisos(force){
   if(!me||!CO().push)return;
   if(avBusy){avAgain=true;return}
-  const list=CO().on?planAvisos():[],sig=JSON.stringify(list.map(a=>[a.at.slice(0,16),a.tag,a.titulo]));
+  const list=CO().on&&premium()?planAvisos():[],sig=JSON.stringify(list.map(a=>[a.at.slice(0,16),a.tag,a.titulo]));
   const s=CS();if(!force&&sig===avSig&&Date.now()-(s.lastSync||0)<20*6e4)return;
   const who=me;avBusy=true;
   try{
@@ -1523,6 +1615,180 @@ async function pushTest(btn){
 setInterval(()=>{if(me&&document.visibilityState==='visible')syncAvisos()},10*6e4);
 if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.coach&&me)setTimeout(coachTick,300)});
 
+/* ---------- plan y pagos ----------
+   Quién puede guardar lo decide Supabase (mi_plan y las reglas de user_docs y avisos); aquí solo se muestra.
+   Se paga en Mercado Pago a través de la función esquina-pago: la app nunca ve la clave ni decide el precio. */
+let PL=null,plBusy=false,plAt=0,plSig='',payBusy=false,planSel='anual',payBack='',payWait=null,lastNudge=0;
+const base={}; // último estado guardado de cada sección, para deshacer cambios cuando no se puede guardar
+{const q=new URLSearchParams(location.search),p=q.get('pago');
+ if(p){payBack=/^(anual|mensual|error)$/.test(p)?p:'';try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}}}
+const ICON_CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const plKey=()=>'esquina.plan.'+me, payKey=()=>'esquina.pago.'+me;
+const locked=()=>!!(PL&&PL.cobro&&PL.escribir===false);
+const premium=()=>!PL||!PL.cobro||PL.acceso!==false;
+const dayFmt=iso=>{const d=new Date(iso);return isNaN(d)?'':d.getDate()+' de '+MESES[d.getMonth()]+(d.getFullYear()!==new Date().getFullYear()?' de '+d.getFullYear():'')};
+const daysLeft=iso=>Math.max(0,Math.ceil((new Date(iso)-Date.now())/864e5));
+function plCache(){try{const j=JSON.parse(localStorage.getItem(plKey())||'null');if(j&&typeof j==='object'){PL=j;plSig=JSON.stringify(j)}}catch(e){}}
+async function planLoad(){
+  if(!me||plBusy)return PL;plBusy=true;const who=me;
+  try{
+    const {data,error}=await sb.rpc('mi_plan');if(who!==me||error||!data||typeof data!=='object')return PL;
+    const was=locked(),sig=JSON.stringify(data);PL=data;plAt=Date.now();
+    try{localStorage.setItem(plKey(),sig)}catch(e){}
+    if(sig!==plSig){plSig=sig;planChanged(was)}
+    return PL;
+  }finally{plBusy=false}
+}
+function planChanged(was){
+  if(was&&!locked())for(const d of dirty){fails[d]=0;flush(d)} // lo que quedó pendiente se sube apenas vuelve el acceso
+  if(!premium()&&co)coachClose();
+  setSync();syncAvisosSoon();
+  const typing=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#view form');
+  if(!ownerMode&&!typing&&!co)render();
+  if(!$('#settings').hidden&&$('#set-plan'))$('#set-plan').outerHTML=planSettings();
+}
+/* Sin acceso: deshace el cambio y ofrece los planes, en vez de dejar algo que nunca se va a guardar */
+function blockedSave(doc){
+  try{S[doc]=clean(doc,base[doc]?JSON.parse(base[doc]):defaults()[doc])}catch(e){}
+  if(booting||Date.now()-lastNudge<6000)return;lastNudge=Date.now();
+  setTimeout(()=>{if(!me)return;render();openPlans()},0);
+}
+async function callPagoFn(body){
+  const {data:{session}}=await sb.auth.getSession();if(!session)return {error:'Tu sesión venció. Vuelve a entrar.'};
+  try{const r=await fetch(SB_URL+'/functions/v1/esquina-pago',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));return r.ok?{data:j}:{error:j.error||'No se pudo hacer. Inténtalo otra vez.'}}
+  catch(e){return {error:'Sin conexión. Inténtalo otra vez.'}}
+}
+function payPending(){try{const j=JSON.parse(localStorage.getItem(payKey())||'null');if(j&&Date.now()-j.at<3*864e5)return j;localStorage.removeItem(payKey())}catch(e){}return null}
+function payClear(){try{localStorage.removeItem(payKey())}catch(e){}}
+let payChecking=false,payLast=0;
+/* Pregunta a Mercado Pago (vía el servidor) si ya entró el pago */
+async function payCheck(manual){
+  if(!me||payChecking||(!manual&&Date.now()-payLast<20000))return;
+  payChecking=true;payLast=Date.now();const who=me;
+  try{const r=await callPagoFn({accion:'refrescar'});if(who!==me)return;if(r.error&&manual)toast(r.error);await planLoad()}finally{payChecking=false}
+  if(who!==me)return;
+  if(PL&&PL.motivo==='pago'&&payPending()){payClear();showPaid();return}
+  if(manual)toast(PL&&PL.motivo==='pago'?'Tu plan está activo':'Todavía no vemos tu pago. Si pagaste recién, espera un minuto y revisa otra vez.');
+}
+function payAfterBoot(){
+  const b=payBack;payBack='';
+  if(b==='error'){toast('El pago no se completó. Puedes intentarlo otra vez.');openPlans();return}
+  if(b){try{if(!payPending())localStorage.setItem(payKey(),JSON.stringify({at:Date.now(),plan:b}))}catch(e){}
+    if(PL&&PL.motivo==='pago'){payClear();showPaid();return}
+    openPlans('wait');payCheck(true);clearInterval(payWait);let n=0;
+    payWait=setInterval(()=>{if(!me||++n>12||$('#plans').hidden||$('#plans').dataset.view!=='wait'){clearInterval(payWait);return}payCheck()},15000);return}
+  if(payPending()&&!(PL&&PL.motivo==='pago'))payCheck();
+}
+/* ---- pantalla de planes ---- */
+function plansIntro(){
+  const p=PL||{};
+  if(!p.cobro)return [owner?'Vista previa':'Planes',owner?'Así verá tu gente los planes. El cobro está apagado: si pagas ahora es un pago real a tu cuenta.':'Por ahora Mi Esquina es gratis. Así serán los planes.'];
+  if(p.motivo==='sin')return p.modo==='basico'?['Vuelve con todo','Tu prueba terminó. Hábitos, plata y semana siguen gratis; el instructor y sus avisos vuelven con un plan.']:['Tu prueba terminó','Tus datos siguen guardados y puedes verlos y descargarlos. Para seguir anotando, elige tu plan.'];
+  if(p.motivo==='prueba'){const n=daysLeft(p.prueba_hasta);return ['Elige tu plan',n<=1?'Hoy es tu último día gratis.':'Te quedan '+n+' días gratis. Si eliges ahora, sigues sin cortes.']}
+  if(p.motivo==='pago')return ['Renueva tu plan','Tienes acceso hasta el '+dayFmt(p.vence)+'.'];
+  return ['Planes',''];
+}
+function plansHTML(view){
+  if(view==='ok'){const p=PL||{};return `
+    <div class="pl-ok"><div class="pl-ok-ic">${ICON_CHECK}</div>
+      <b class="disp">¡Bienvenido al equipo!</b>
+      <p>${p.plan==='mensual'?'Tu plan mensual quedó activo'+(p.fundador?' con precio de fundador':'')+'. Se renueva solo y lo cancelas cuando quieras en Ajustes.':'Tu plan anual quedó activo hasta el '+esc(dayFmt(p.vence))+'.'}</p>
+      <button class="btn red" type="button" data-pl-close>Seguir</button></div>`}
+  if(view==='wait')return `
+    <div class="pl-head"><b class="disp">Revisando tu pago</b><button type="button" class="x" data-pl-close aria-label="Cerrar">×</button></div>
+    <div class="pl-wait"><span class="pl-spin" aria-hidden="true"></span><p>Estamos esperando la confirmación de Mercado Pago. Suele tardar segundos; con transferencia o pago en efectivo puede tardar más.</p></div>
+    <button class="btn" type="button" data-pl-check>Revisar otra vez</button>
+    <div class="note">Puedes cerrar esto: tu plan se activa solo apenas Mercado Pago lo confirme.</div>`;
+  const p=PL||{},pr=p.precios||{anual:29990,mensual:2990,normal:4990,fundador:true,cupos:100};
+  const fund=pr.mensual<pr.normal,ahorro=pr.mensual*12-pr.anual,[t,s]=plansIntro();
+  const mensualOff=p.auto&&p.motivo==='pago';
+  const opt=(k,inner)=>`<button type="button" class="pl-opt${planSel===k?' on':''}" role="radio" aria-checked="${planSel===k}" data-pl-sel="${k}">${inner}<span class="pl-ck" aria-hidden="true">${ICON_CHECK}</span></button>`;
+  return `
+  <div class="pl-head"><b class="disp">${esc(t)}</b><button type="button" class="x" data-pl-close aria-label="Cerrar">×</button></div>
+  ${s?`<p class="pl-sub">${esc(s)}</p>`:''}
+  <div class="pl-opts" role="radiogroup" aria-label="Plan">
+    ${opt('anual',`<span class="pl-badge">Más conveniente</span><span class="pl-n">Anual</span><span class="pl-p"><b class="disp num">${clp(pr.anual)}</b> al año</span><span class="pl-s">Equivale a ${clp(Math.round(pr.anual/12))} al mes${ahorro>0?' · ahorras '+clp(ahorro):''}</span><span class="pl-s">Un solo pago con débito, crédito o saldo de Mercado Pago</span>`)}
+    ${mensualOff?'':opt('mensual',`${fund?`<span class="pl-badge gold">Precio fundador</span>`:''}<span class="pl-n">Mensual</span><span class="pl-p"><b class="disp num">${clp(pr.mensual)}</b> al mes${fund?` <s class="num">${clp(pr.normal)}</s>`:''}</span><span class="pl-s">${fund?'Tu cuenta está entre las primeras 100: mantienes este precio mientras sigas suscrito.':'Se renueva solo cada mes.'}</span><span class="pl-s">Se cobra solo cada mes con tarjeta de crédito · cancelas cuando quieras</span>`)}
+  </div>
+  <ul class="pl-inc">${['Instructor con voz y avisos con la app cerrada','Hábitos, agua y despertador con cinturones','Tu plata, tus proyectos y tu semana','Tus datos en todos tus equipos'].map(x=>`<li>${ICON_CHECK}<span>${x}</span></li>`).join('')}</ul>
+  <button class="btn red pl-go" type="button" data-pl-go>Pagar ${clp(planSel==='mensual'&&!mensualOff?pr.mensual:pr.anual)} con Mercado Pago</button>
+  <div class="note pl-fine">Pagas en Mercado Pago: Mi Esquina nunca ve tu tarjeta. Precios en pesos chilenos con IVA incluido. <a href="privacidad.html#planes" target="_blank" rel="noopener">Condiciones</a></div>
+  ${p.cobro?`<button class="btn sm pl-chk" type="button" data-pl-check>Ya pagué: revisar</button>`:''}`;
+}
+function openPlans(view){
+  const el=$('#plans'),b=$('#plans-body');if(!el||!me)return;
+  if(PL&&PL.auto&&PL.motivo==='pago'&&view!=='ok'&&view!=='wait')planSel='anual';
+  el.dataset.view=view||'';b.innerHTML=plansHTML(view);
+  if(el.hidden)showSheet(el);
+}
+function closePlans(){const el=$('#plans');clearInterval(payWait);hideSheet(el,()=>{if(el.hidden)$('#plans-body').innerHTML=''})}
+function showPaid(){
+  closeSettings();openPlans('ok');try{FX.rain()}catch(e){}
+  if(CO().voice)say(CO().tone==='sargento'?'¡Bienvenido al equipo, soldado! ¡Ahora sí, a cumplir!':'¡Bienvenido al equipo! Ahora sí, a cumplir.');
+  render();
+}
+async function payStart(btn){
+  if(payBusy)return;payBusy=true;btn.disabled=true;const lbl=btn.textContent;btn.textContent='Abriendo Mercado Pago…';
+  const plan=PL&&PL.auto&&PL.motivo==='pago'?'anual':planSel;
+  const res=await callPagoFn({accion:'crear',plan});
+  const url=res.data&&res.data.url;
+  if(res.error||!/^https:\/\/([a-z0-9-]+\.)*mercadopago\.(cl|com)\//.test(url||'')){payBusy=false;btn.disabled=false;btn.textContent=lbl;toast(res.error||'No se pudo abrir Mercado Pago');return}
+  try{localStorage.setItem(payKey(),JSON.stringify({at:Date.now(),plan}))}catch(e){}
+  if(dirty.size)await flushAll();
+  location.assign(url);
+  setTimeout(()=>{payBusy=false;btn.disabled=false;btn.textContent=lbl},5000);
+}
+$('#plans').addEventListener('click',async e=>{
+  if(e.target.id==='plans')return closePlans();
+  const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
+  if(ds.plClose!==undefined)return closePlans();
+  if(ds.plSel){planSel=ds.plSel;$('#plans-body').innerHTML=plansHTML();return}
+  if(ds.plGo!==undefined)return payStart(b);
+  if(ds.plCheck!==undefined){b.disabled=true;b.textContent='Revisando…';await payCheck(true);if(!$('#plans').hidden&&$('#plans').dataset.view!=='ok')openPlans($('#plans').dataset.view);return}
+});
+dragToClose($('#plans'),closePlans);
+/* ---- tarjeta en Inicio ---- */
+function planCard(){
+  const p=PL;if(!p||!p.cobro||p.motivo==='dueno'||p.motivo==='libre')return '';
+  const pend=payPending();
+  if(p.motivo==='sin'){
+    if(p.modo==='basico')return `<div class="card pl-card warn"><div class="eyebrow">Plan</div><div class="pl-ct">Tu prueba del instructor terminó</div><div class="note">Hábitos, plata y semana siguen gratis. El instructor y sus avisos vuelven con un plan.</div><div class="co-btns"><button class="btn red" type="button" data-planes>Ver planes</button>${pend?'<button class="btn" type="button" data-pay-check>Ya pagué</button>':''}</div></div>`;
+    return `<div class="card hero pl-lock"><div class="eyebrow">Tu prueba terminó</div><div class="pl-ct disp">Vuelve al ring</div><p>Tus datos siguen guardados: puedes verlos y descargarlos. Para seguir anotando, elige tu plan.</p><div class="co-btns"><button class="btn red" type="button" data-planes>Elegir plan</button>${pend?'<button class="btn" type="button" data-pay-check>Ya pagué: revisar</button>':'<button class="btn" type="button" data-settings="datos">Descargar mis datos</button>'}</div></div>`;
+  }
+  if(p.motivo==='prueba'){
+    const n=daysLeft(p.prueba_hasta),tot=+p.prueba_dias||14,pct=Math.max(4,Math.min(100,Math.round((tot-n)/tot*100))),hot=n<=3;
+    return `<div class="card pl-card${hot?' hot':''}"><div class="pl-row"><div style="min-width:0"><div class="eyebrow">Prueba gratis</div><div class="pl-ct">${n<=1?'Hoy es tu último día':'Te quedan '+n+' días'}</div></div><button class="btn ${hot?'red':'pri'} sm" type="button" data-planes>Ver planes</button></div><div class="bar pl-bar"><i style="width:${pct}%"></i></div><div class="note">Después: ${clp((p.precios||{}).anual||29990)} al año o ${clp((p.precios||{}).mensual||2990)} al mes.${pend?' <button class="lnk" type="button" data-pay-check>Ya pagué: revisar</button>':''}</div></div>`;
+  }
+  if(p.motivo==='pago'&&!p.auto&&p.vence&&daysLeft(p.vence)<=10)
+    return `<div class="card pl-card hot"><div class="pl-row"><div style="min-width:0"><div class="eyebrow">Tu plan</div><div class="pl-ct">Termina el ${esc(dayFmt(p.vence))}</div></div><button class="btn red sm" type="button" data-planes>Renovar</button></div></div>`;
+  return '';
+}
+/* ---- sección en Ajustes ---- */
+function planSettings(){
+  const p=PL;
+  if(!p||(!p.cobro&&!owner))return '<div id="set-plan" hidden></div>';
+  let line,btns='';
+  if(!p.cobro)line='El cobro está apagado: todos usan la app gratis. Lo enciendes en tu panel, en Cobros.';
+  else if(p.motivo==='dueno')line='Eres el dueño: tienes todo sin pagar.';
+  else if(p.motivo==='prueba'){line='Prueba gratis hasta el '+dayFmt(p.prueba_hasta)+'.';btns='<button class="btn red" type="button" data-planes>Ver planes</button>'}
+  else if(p.motivo==='sin'){line='Tu prueba terminó el '+dayFmt(p.prueba_hasta)+'. Tus datos siguen guardados.';btns='<button class="btn red" type="button" data-planes>Elegir plan</button>'}
+  else if(p.plan==='mensual'&&p.estado==='activa'){line='Plan mensual de '+clp(p.monto)+(p.fundador?' (precio fundador)':'')+'. Se renueva solo; el próximo cobro es cerca del '+dayFmt(new Date(new Date(p.vence)-3*864e5))+'.';btns='<button class="btn" type="button" data-pl-cancel>Cancelar suscripción</button>'}
+  else if(p.plan==='mensual'){line='Cancelaste el plan mensual. Tienes acceso hasta el '+dayFmt(p.vence)+' y no se te vuelve a cobrar.';btns='<button class="btn red" type="button" data-planes>Volver a suscribirme</button>'}
+  else{line='Plan anual hasta el '+dayFmt(p.vence)+'.';if(daysLeft(p.vence)<=30)btns='<button class="btn red" type="button" data-planes>Renovar</button>'}
+  return `<div class="set-sec" id="set-plan"><h4>Tu plan</h4><div>${esc(line)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${btns}${p.cobro&&p.motivo!=='dueno'?'<button class="btn" type="button" data-pay-check>Revisar mi pago</button>':''}${owner&&!p.cobro?'<button class="btn" type="button" data-planes>Ver la pantalla de planes</button>':''}</div></div>`;
+}
+async function payCancel(btn){
+  const p=PL||{};
+  if(!confirm('¿Cancelar tu plan mensual? No se te vuelve a cobrar y sigues con todo hasta el '+dayFmt(p.vence)+'.'))return;
+  btn.disabled=true;btn.textContent='Cancelando…';
+  const r=await callPagoFn({accion:'cancelar'});
+  if(r.error){btn.disabled=false;btn.textContent='Cancelar suscripción';return toast(r.error)}
+  await planLoad();toast('Plan cancelado. Sigues con todo hasta el '+dayFmt(p.vence)+'.');
+  if($('#set-plan'))$('#set-plan').outerHTML=planSettings();
+}
+
 /* ---------- ajustes ---------- */
 let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e});
@@ -1533,6 +1799,7 @@ function openSettings(focus){
   $('#set-body').innerHTML=`
   <div style="display:flex;justify-content:space-between;align-items:center"><b class="disp" style="font-size:28px;text-transform:uppercase">Ajustes</b><button type="button" class="x" data-close-set aria-label="Cerrar">×</button></div>
   ${owner?`<div class="set-sec"><h4>Dueño</h4><button class="btn red" type="button" data-owner-open style="justify-self:start">${ICON_CROWN} Abrir el panel del dueño</button><div class="note">Solo tu cuenta ve este botón.</div></div>`:''}
+  ${planSettings()}
   <div class="set-sec"><h4>Tu perfil</h4>
     <form class="row" id="st-name"><label>Nombre<input id="st-n" maxlength="40" value="${esc(S.meta.name)}" required></label><button class="btn" type="submit">Guardar</button></form>
     <div class="note">Entras con ${esc(email)}</div></div>
@@ -1544,7 +1811,7 @@ function openSettings(focus){
     <form class="row" id="st-areas">${AREA_KEYS.map(k=>`<label><span style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:var(--a-${k})"></span>${esc(AREA_DEF[k])}</span><input data-area="${k}" maxlength="24" value="${esc(obj(S.meta.areaNames)[k]||'')}" placeholder="${esc(AREA_DEF[k])}"></label>`).join('')}<button class="btn" type="submit">Guardar nombres</button></form></div>
   <div class="set-sec"><h4>Instalar en tu celular</h4>
     ${standalone()?'<div class="note">Ya la estás usando como app. 👊</div>':installEvt?'<button class="btn pri" type="button" data-install style="justify-self:start">Instalar Mi Esquina</button>':isIOS?'<div>En Safari, toca <b>Compartir</b> (el cuadrado con la flecha) y elige <b>Agregar a pantalla de inicio</b>.</div>':'<div>En Chrome, abre el menú de los tres puntos y elige <b>Instalar app</b> o <b>Agregar a la pantalla principal</b>. En iPhone, usa Safari: <b>Compartir</b> y <b>Agregar a pantalla de inicio</b>.</div>'}</div>
-  <div class="set-sec"><h4>Tus datos</h4>
+  <div class="set-sec" id="set-datos"><h4>Tus datos</h4>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-export>Descargar mis datos</button></div>
     <form id="st-import" style="display:grid;gap:8px"><label class="note" for="st-imp">Importar: pega aquí los datos copiados desde otra versión de Mi Esquina, o elige el archivo descargado.</label>
       <textarea id="st-imp" placeholder='{"app":"mi-esquina", ...}'></textarea>
@@ -1555,10 +1822,11 @@ function openSettings(focus){
   <div class="set-sec"><h4>Cuenta</h4>
     <form class="row" id="st-pw"><label>Contraseña nueva<input id="st-p" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label><button class="btn" type="submit">Cambiar contraseña</button></form>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-logout>Cerrar sesión</button><a class="btn" href="privacidad.html" target="_blank" rel="noopener">Privacidad y términos</a></div>
-    <form class="row" id="st-del" style="margin-top:6px"><label>Para borrar tu cuenta y todos tus datos, escribe BORRAR<input id="st-d" autocomplete="off" maxlength="10"></label><button class="btn red" type="submit">Borrar mi cuenta</button></form></div>`;
+    <form class="row" id="st-del" style="margin-top:6px"><label>Para borrar tu cuenta y todos tus datos, escribe BORRAR${PL&&PL.auto?'. Tu plan mensual también se cancela.':''}<input id="st-d" autocomplete="off" maxlength="10"></label><button class="btn red" type="submit">Borrar mi cuenta</button></form></div>`;
   showSheet($('#settings'));
   if(focus==='cd')setTimeout(()=>{const el=$('#set-cd');el.scrollIntoView({block:'center'});$('#st-cdl').focus()},60);
   if(focus==='coach')setTimeout(()=>{const el=$('#set-coach');if(el)el.scrollIntoView({block:'start'})},60);
+  if(focus==='datos')setTimeout(()=>{const el=$('#set-datos');if(el)el.scrollIntoView({block:'start'})},60);
   drawPushRow();
 }
 function coachSettings(){
@@ -1610,6 +1878,7 @@ $('#settings').addEventListener('click',async e=>{
   if(ds.pushOn!==undefined){b.disabled=true;await pushEnable();drawPushRow();render();return}
   if(ds.pushOff!==undefined){b.disabled=true;await pushDisable();drawPushRow();render();return}
   if(ds.pushTest!==undefined){await pushTest(b);return}
+  if(ds.plCancel!==undefined){await payCancel(b);return}
   if(ds.cdClear!==undefined){S.meta.countdown={label:'',date:''};save('meta');render();openSettings();toast('Fecha quitada');return}
   if(ds.install!==undefined&&installEvt){installEvt.prompt();try{await installEvt.userChoice}catch(err){}installEvt=null;openSettings();return}
   if(ds.export!==undefined){const blob=new Blob([JSON.stringify(exportJSON(),null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mi-esquina-'+today()+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}
@@ -1740,16 +2009,17 @@ function teardown(){
   loadingView=false;ownerReset();
   me=null;email='';S=defaults();dirty.clear();for(const k in timers)clearTimeout(timers[k]);
   disarm();stopRing();ch=null;$('#alarm').hidden=true;$('#sheet').hidden=true;closeSettings();$('#view').innerHTML='';
+  PL=null;plSig='';plAt=0;for(const k in base)delete base[k];clearInterval(payWait);$('#plans').hidden=true;$('#plans-body').innerHTML='';
   co=null;coS=null;avSig='';pushDev='na';clearTimeout(avT);$('#coach').hidden=true;$('#coach').innerHTML='';lockScroll(false);try{canSpeak&&speechSynthesis.cancel()}catch(e){}
 }
 async function boot(session){
   if(booting||(me&&me===session.user.id))return;booting=true;
   try{
-    teardown();me=session.user.id;email=session.user.email||'';
+    teardown();me=session.user.id;email=session.user.email||'';plCache();
     const metaName=str(obj(session.user.user_metadata).nombre,40);
     // 1) lo que hay en este dispositivo, para mostrar algo al instante
     let had=false;
-    for(const d of DOCS){try{const c=JSON.parse(localStorage.getItem(cacheKey(d))||'null');if(c){had=true;S[d]=clean(d,c.d);if(c.dirty){dirty.add(d);rev[d]=(rev[d]||0)+1}}}catch(e){}}
+    for(const d of DOCS){try{const c=JSON.parse(localStorage.getItem(cacheKey(d))||'null');if(c){had=true;S[d]=clean(d,c.d);base[d]=JSON.stringify(S[d]);if(c.dirty){dirty.add(d);rev[d]=(rev[d]||0)+1}}}catch(e){}}
     if(!S.meta.name)S.meta.name=metaName;
     tab='inicio';try{const t=localStorage.getItem('esquina.tab');if(VIEWS[t])tab=t}catch(e){}
     if(/^#(crear|entrar)$/.test(location.hash))clearHash();
@@ -1764,7 +2034,7 @@ async function boot(session){
       const got={};(data||[]).forEach(r=>got[r.doc]=r.data);
       for(const d of DOCS){
         if(dirty.has(d)){flush(d);continue}
-        if(got[d])S[d]=clean(d,got[d]);
+        if(got[d]){S[d]=clean(d,got[d]);base[d]=JSON.stringify(S[d])}
         else{if(d==='meta'&&!S.meta.name)S.meta.name=metaName;save(d)} // primera vez: guarda los valores iniciales
         cacheWrite(d);
       }
@@ -1776,6 +2046,7 @@ async function boot(session){
     let coachWait=3000;
     if(pendingHash){const h=pendingHash;pendingHash='';clearHash();const g=hashGasto(h);if(g)openQuick(g);else if(h==='#despertar')startChallenge('link');else if(h==='#coach')coachWait=400}
     checkOwner();
+    const who=me;planLoad().then(()=>{if(me===who)payAfterBoot()});
     refreshPush();syncAvisosSoon();setTimeout(coachTick,coachWait);
   }finally{booting=false}
 }
@@ -1787,11 +2058,11 @@ async function pull(){
   const {data,error}=await sb.from('user_docs').select('doc,data');
   if(error||who!==me||dirty.size)return;
   let changed=false;
-  for(const r of data||[]){if(!DOCS.includes(r.doc))continue;const c=clean(r.doc,r.data);if(JSON.stringify(c)!==JSON.stringify(S[r.doc])){S[r.doc]=c;cacheWrite(r.doc);changed=true}}
+  for(const r of data||[]){if(!DOCS.includes(r.doc))continue;const c=clean(r.doc,r.data);if(JSON.stringify(c)!==JSON.stringify(S[r.doc])){S[r.doc]=c;base[r.doc]=JSON.stringify(c);cacheWrite(r.doc);changed=true}}
   const typing=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#view form');
-  if(changed&&!typing&&$('#sheet').hidden&&$('#settings').hidden&&$('#alarm').hidden&&!co)render();
+  if(changed&&!typing&&$('#sheet').hidden&&$('#settings').hidden&&$('#plans').hidden&&$('#alarm').hidden&&!co)render();
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pull();if(owner)odRefresh();if(me){setTimeout(coachTick,1200);syncAvisos()}}else for(const d of [...dirty])flush(d)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pull();if(owner)odRefresh();if(me){if(payPending())payCheck();else if(Date.now()-plAt>5*6e4)planLoad();setTimeout(coachTick,1200);syncAvisos()}}else for(const d of [...dirty])flush(d)});
 
 sb.auth.onAuthStateChange((ev,session)=>{
   // Se difiere para no llamar a la base de datos dentro del aviso de sesión
