@@ -61,6 +61,9 @@ function beltFor(xp){
 
 /* ---------- estado ---------- */
 const DOCS=['habits','money','claude','week','meta'];
+const TONES={suave:'Suave',firme:'Firme',sargento:'Sargento'};
+const WATER_EVERY=[30,45,60,90,120];
+const coachDef=()=>({on:true,voice:true,tone:'firme',water:{every:60,from:'08:00',to:'22:00'},habitsAt:'21:00',push:false,intro:false,since:0});
 function defaults(){
   return {
     habits:{list:[
@@ -74,8 +77,8 @@ function defaults(){
     ],log:{},water:{goal:2000,log:{}},wake:{}},
     money:{tx:[],budgets:{},merchants:{}},
     claude:{projects:[],subs:[],usage:[],rate:950},
-    week:{blocks:[]},
-    meta:{name:'',tab:'inicio',alarm:{time:'06:30',ex:'flexiones'},countdown:{label:'',date:''},areaNames:{},onboarded:false,mig2L:true}
+    week:{blocks:[],done:{}},
+    meta:{name:'',tab:'inicio',alarm:{time:'06:30',ex:'flexiones'},countdown:{label:'',date:''},areaNames:{},onboarded:false,mig2L:true,coach:coachDef()}
   };
 }
 function sampleWeek(){
@@ -116,14 +119,21 @@ function clean(doc,v){
   }
   if(doc==='week'){
     const blocks=arr(v.blocks).slice(0,400).filter(b=>b&&typeof b==='object'&&isHM(b.start)&&isHM(b.end)).map(b=>({id:sid(b.id),day:Math.max(0,Math.min(6,Math.round(nn(b.day)))),start:b.start,end:b.end,area:AREA_KEYS.includes(b.area)?b.area:'salud',title:str(b.title,80)||'Bloque',lock:!!b.lock}));
-    return {blocks};
+    // Lo que cumpliste de cada bloque planificado: 1 sí, 0 no. Se guardan los últimos 120 días.
+    const done={},lim=addDays(today(),-120);
+    for(const [k,d] of Object.entries(obj(v.done)))if(isDate(k)&&k>=lim){const o={};for(const [id,x] of Object.entries(obj(d)).slice(0,80))o[sid(id)]=x?1:0;if(Object.keys(o).length)done[k]=o}
+    return {blocks,done};
   }
   if(doc==='meta'){
     const a=obj(v.alarm),cd=obj(v.countdown),an={};
     for(const k of AREA_KEYS){const n=str(obj(v.areaNames)[k],24).trim();if(n)an[k]=n}
     let countdown={label:str(cd.label,40),date:isDate(cd.date)?cd.date:''};
     if(!countdown.date&&isDate(v.baby))countdown={label:'Bebé',date:v.baby}; // datos traídos de la versión anterior
-    return {name:str(v.name,40),tab:VIEWS[v.tab]?v.tab:'inicio',alarm:{time:isHM(a.time)?a.time:'06:30',ex:['flexiones','sentadillas','alternar'].includes(a.ex)?a.ex:'flexiones'},countdown,areaNames:an,onboarded:!!v.onboarded,mig2L:true};
+    const co=obj(v.coach),cw=obj(co.water),wf=isHM(cw.from)?cw.from:'08:00';
+    const coach={on:co.on!==false,voice:co.voice!==false,tone:TONES[co.tone]?co.tone:'firme',
+      water:{every:WATER_EVERY.includes(+cw.every)?+cw.every:60,from:wf,to:isHM(cw.to)&&cw.to>wf?cw.to:'22:00'},
+      habitsAt:isHM(co.habitsAt)?co.habitsAt:'21:00',push:!!co.push,intro:!!co.intro,since:Math.max(0,nn(co.since))};
+    return {name:str(v.name,40),tab:VIEWS[v.tab]?v.tab:'inicio',alarm:{time:isHM(a.time)?a.time:'06:30',ex:['flexiones','sentadillas','alternar'].includes(a.ex)?a.ex:'flexiones'},countdown,areaNames:an,onboarded:!!v.onboarded,mig2L:true,coach};
   }
   return f;
 }
@@ -137,6 +147,7 @@ function save(doc){
   if(!me)return;
   rev[doc]=(rev[doc]||0)+1;dirty.add(doc);cacheWrite(doc);setSync();
   clearTimeout(timers[doc]);timers[doc]=setTimeout(()=>flush(doc),500);
+  if(doc==='week'||doc==='habits'||doc==='meta')syncAvisosSoon();
 }
 async function flush(doc){
   if(!me||!dirty.has(doc))return;
@@ -168,10 +179,11 @@ window.addEventListener('pagehide',()=>{for(const d of dirty)cacheWrite(d)});
 const H=()=>S.habits;
 function doneOn(k){return H().log[k]||{}}
 function W(){const h=H();if(!h.water)h.water={goal:2000,log:{}};if(!h.water.log)h.water.log={};return h.water}
-const WATER_XP=15, WAKE_XP=20;
+const WATER_XP=15, WAKE_XP=20, PLAN_XP=10;
+function WD(){if(!S.week.done)S.week.done={};return S.week.done}
 function WK(){const h=H();if(!h.wake)h.wake={};return h.wake}
 function AL(){if(!S.meta.alarm)S.meta.alarm={time:'06:30',ex:'flexiones'};return S.meta.alarm}
-function totalXP(){let t=0;for(const k in H().log)for(const id in H().log[k])t+=H().log[k][id];const w=W();for(const k in w.log)if(w.log[k]>=w.goal)t+=WATER_XP;t+=Object.keys(WK()).length*WAKE_XP;return t}
+function totalXP(){let t=0;for(const k in H().log)for(const id in H().log[k])t+=H().log[k][id];const w=W();for(const k in w.log)if(w.log[k]>=w.goal)t+=WATER_XP;t+=Object.keys(WK()).length*WAKE_XP;const D=WD();for(const k in D)for(const id in D[k])if(D[k][id]===1)t+=PLAN_XP;return t}
 function habitStreak(id){
   let k=today();if(!doneOn(k)[id])k=addDays(k,-1);
   let n=0;while(doneOn(k)[id]){n++;k=addDays(k,-1)}return n;
@@ -267,6 +279,7 @@ function vInicio(){
   const pending=H().list.filter(h=>!doneOn(k)[h.id]).slice(0,3);
   return `
   ${welcomeCard()}
+  ${coachCard()}
   ${alarmCard()}
   <div class="grid g2 stack-sm" style="margin-top:12px">
     <div class="card hero" style="display:flex;gap:16px;align-items:center">
@@ -298,7 +311,7 @@ function vInicio(){
   ${weekGlance(k)}
   <div class="sec">
     <div class="sec-h"><h3>Hoy, ${DIAS[dow(k)].toLowerCase()}</h3><button class="btn sm" data-go="semana">Ver semana</button></div>
-    <div class="card"><div class="list">${todayBlocks.length?todayBlocks.map(b=>{const a=AREAS[b.area]||AREAS.salud;const now=b.start<=nowHM&&nowHM<b.end;return `<div class="li"><span class="dot" style="background:${a.c}"></span><div class="grow"><div class="t">${esc(b.title)} ${now?'<span class="chip" style="color:var(--red)">Ahora</span>':''}</div><div class="s num">${b.start}–${b.end} · ${esc(a.n)}${b.lock?' · protegido':''}</div></div></div>`}).join(''):'<div class="empty">Nada agendado hoy.</div>'}</div></div>
+    <div class="card"><div class="list">${todayBlocks.length?todayBlocks.map(b=>{const a=AREAS[b.area]||AREAS.salud;const now=b.start<=nowHM&&nowHM<b.end,v=planDone(k,b.id);return `<div class="li"><span class="dot" style="background:${a.c}"></span><div class="grow"><div class="t">${esc(b.title)} ${now?'<span class="chip" style="color:var(--red)">Ahora</span>':''}</div><div class="s num">${b.start}–${b.end} · ${esc(a.n)}${b.lock?' · protegido':''}${v===1?' · cumplido':v===0?' · no cumplido':''}</div></div>${b.start<=nowHM?planBtns(b,v):''}</div>`}).join(''):'<div class="empty">Nada agendado hoy.</div>'}</div></div>
   </div>
   <div class="sec">
     <div class="sec-h"><h3>Marca tus hábitos</h3><button class="btn sm" data-go="habitos">Todos</button></div>
@@ -872,6 +885,14 @@ document.addEventListener('click',e=>{
   if(ds.go)return go(ds.go);
   if(ds.settings!==undefined){openSettings(ds.settings);return}
   if(ds.onb!==undefined){S.meta.onboarded=true;save('meta');render();return}
+  if(ds.plan){const k=today(),v=+ds.v,cur=planDone(k,ds.plan),b=S.week.blocks.find(x=>x.id===ds.plan);if(!b)return;
+    setPlan(k,ds.plan,cur===v?null:v);
+    if(cur!==v){const m=fr(v?'yes':'no');toast(v?'+'+PLAN_XP+' XP · '+b.title:'Anotado: no cumpliste '+b.title);say(m);
+      if(v){const id=ds.plan;celebrate=()=>burstAt(`[data-plan="${CSS.escape(id)}"][data-v="1"]`)}}
+    render();return}
+  if(ds.coSay!==undefined){say(coachLine());return}
+  if(ds.coPush!==undefined){t.disabled=true;pushEnable().then(()=>render());return}
+  if(ds.coOn!==undefined){CO().on=true;save('meta');render();setTimeout(coachTick,600);return}
   if(ds.samplewk!==undefined){S.week.blocks=sampleWeek();save('week');toast('Semana de ejemplo cargada. Bórrale y agrégale lo que quieras.');render();return}
   if(ds.hab){
     const k=today(),log=H().log;log[k]=log[k]||{};
@@ -883,7 +904,7 @@ document.addEventListener('click',e=>{
       const id=ds.hab,pts=h.pts;celebrate=()=>{const sel=`[data-hab="${CSS.escape(id)}"]`,b=document.querySelector(sel);if(b)b.classList.add('pop');burstAt(sel+' .ck');flyAt(sel+' .pts','+'+pts+' XP');if(big)FX.rain()}}
     save('habits');render();return;
   }
-  if(ds.water){const k=today(),w=W(),before=w.log[k]||0;const nv=Math.max(0,before+(+ds.water));if(nv)w.log[k]=nv;else delete w.log[k];
+  if(ds.water){const k=today(),w=W(),before=w.log[k]||0;if(+ds.water>0)coachDrank();const nv=Math.max(0,before+(+ds.water));if(nv)w.log[k]=nv;else delete w.log[k];
     if(before<w.goal&&nv>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');celebrate=()=>FX.rain()}else if(+ds.water>0){toast('+'+ds.water+' ml');const ml=ds.water;celebrate=()=>{burstAt('#glass svg path');flyAt('#glass','+'+ml+' ml','var(--water)')}}
     save('habits');render();const g=document.getElementById('glass');if(g){g.classList.add('splash')}return}
   if(ds.copy){const el=document.getElementById(ds.copy),txt=el?el.textContent:'';
@@ -989,7 +1010,7 @@ dragToClose($('#sheet'),closeQuick);
 $('#sheet').addEventListener('click',e=>{if(e.target.id==='sheet')closeQuick();const b=e.target.closest('[data-qcat]');if(b){qCat=b.dataset.qcat;[...document.querySelectorAll('[data-qcat]')].forEach(x=>x.classList.toggle('on',x===b))}});
 $('#q-paste').addEventListener('input',e=>{const r=parseAviso(e.target.value);if(r.amt)$('#q-amt').value=r.amt.toLocaleString('es-CL');if(r.where)$('#q-note').value=r.where});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!$('#od-sheet').hidden)closeOdSheet();else if(!$('#sheet').hidden)closeQuick();else if(!$('#settings').hidden)closeSettings()});
-window.addEventListener('hashchange',()=>{if(!me){const h=location.hash||'';if(hashGasto(h)||h==='#despertar'){pendingHash=h;authMsg('Entra para anotar tu gasto.')}return}const g=hashGasto();if(g)openQuick(g);else if(location.hash==='#despertar'&&!ch)startChallenge('link')});
+window.addEventListener('hashchange',()=>{if(!me){const h=location.hash||'';if(hashGasto(h)||h==='#despertar'){pendingHash=h;authMsg('Entra para anotar tu gasto.')}else if(h==='#coach')pendingHash=h;return}const g=hashGasto();if(g)openQuick(g);else if(location.hash==='#despertar'&&!ch)startChallenge('link');else if(location.hash==='#coach'){clearHash();setTimeout(coachTick,300)}});
 
 /* ---------- despertador ---------- */
 const MIN_GAP=800; // ms mínimos entre repeticiones: más rápido no cuenta
@@ -1094,6 +1115,414 @@ function analysis(r,prevAvg){
 $('#alarm').addEventListener('pointerdown',rep);
 $('#n-off').addEventListener('click',disarm);
 
+/* ---------- instructor ----------
+   Te recuerda lo que planificaste, te pide cuentas cuando termina cada bloque, te obliga a tomar agua y a cerrar tus hábitos.
+   Con la app abierta habla y su pantalla no se cierra hasta que respondes. Con la app cerrada manda avisos desde el servidor
+   (tabla avisos + función instructor-avisos, que el reloj de la base de datos llama cada minuto). */
+const CO=()=>{if(!S.meta.coach)S.meta.coach=coachDef();return S.meta.coach};
+const ICON_WHISTLE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 14.5a6 6 0 1 0 11.6-2.2L21.5 10V6H10A6 6 0 0 0 2.5 14.5z"/><circle cx="8.5" cy="14.5" r="1.8"/><path d="M15.5 6V3"/></svg>';
+const ICON_SPEAK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="w1" d="M15.5 9a4 4 0 0 1 0 6"/><path class="w2" d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
+const ICON_OK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const ICON_NO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+/* Frases por tono. {n} nombre, {t} bloque, {h} hora, {w} vasos tomados, {W} vasos de la meta, {e} vasos que deberías llevar,
+   {G} meta en litros, {c} cantidad, {y} cumplidos, {m} minutos, {b} resumen del día */
+const FR={
+  suave:{
+    intro:['Hola, {n}. Soy tu instructor. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a cuidar con el agua.'],
+    start:['{n}, ya es hora de {t}. Tú puedes.','Llegó el momento de {t}. Partamos con calma, pero partamos.'],
+    late:['{n}, tu bloque de {t} empezó a las {h}. Todavía estás a tiempo.'],
+    go:['Muy bien. Disfrútalo.','Así me gusta. Vamos.'],
+    check:['¿Cómo te fue con {t}? Sé honesto contigo.','Terminó el bloque de {t}. ¿Lo hiciste?'],
+    checks:['Tienes {c} bloques sin contarme cómo te fue. Vamos uno por uno.'],
+    yes:['¡Bien hecho, {n}! Cumpliste tu palabra.','Lo lograste. Así se construye una vida ordenada.'],
+    no:['Está bien, mañana lo intentamos de nuevo. Pero que no pase dos veces seguidas.','No pasa nada si es una vez. Mañana lo recuperas.'],
+    mixed:['Cumpliste {y} de {c}. Vas bien, mañana por todos.'],
+    water:['{n}, toma un vaso de agua. Llevas {w} de {W}.','Hora de hidratarte. Un vaso y sigues.'],
+    waterok:['Muy bien. Tu cuerpo te lo agradece.','Eso. Te recuerdo el próximo en {m} minutos.'],
+    waterdone:['¡Meta de agua cumplida, {n}! Qué bien te cuidaste hoy.'],
+    habits:['Te faltan {c} hábitos de hoy. Todavía hay tiempo.','{n}, revisemos tus hábitos antes de que termine el día.'],
+    habitsok:['Todos tus hábitos listos. Día cumplido, {n}.'],
+    habitsno:['Está bien. Mañana empezamos de nuevo, con todo.'],
+    snooze:['Te vuelvo a avisar en {m} minutos.'],
+    nosnooze:['Ya lo dejaste para después. Ahora sí, hazlo.'],
+    skipq:['¿Seguro? Lo planificaste tú. Toca otra vez si de verdad no lo vas a hacer.'],
+    brief:['Buenos días, {n}. Hoy tienes {b}. Vamos paso a paso.']
+  },
+  firme:{
+    intro:['{n}, desde hoy soy tu instructor. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a obligar a tomar agua. Si no cumples, te reto.'],
+    start:['{n}, son las {h}. Toca {t}. Deja lo que estás haciendo y anda.','Lo planificaste tú: {t}, ahora. Sin excusas.','Hora de {t}, {n}. La disciplina se nota cuando no tienes ganas.'],
+    late:['{n}, tu bloque de {t} empezó a las {h}. Vas tarde. Muévete.','Ya deberías estar en {t}. ¿Qué haces mirando el celular?'],
+    go:['Eso. A las {e} me rindes cuentas.','Bien. Te pregunto cómo te fue cuando termine.'],
+    check:['{n}, rinde cuentas: ¿cumpliste {t}?','Se terminó el bloque de {t}. ¿Lo hiciste o no? Sin mentiras.'],
+    checks:['{n}, tienes {c} bloques sin rendir cuentas. Uno por uno.'],
+    yes:['Eso, {n}. Cumpliste lo que dijiste.','Bien ahí. Así se gana el round.','Palabra cumplida. Así me gusta.'],
+    no:['Mal, {n}. Lo planificaste y no lo hiciste. Mañana no quiero excusas.','No cumpliste. Mañana lo haces sí o sí.','Te fallaste a ti mismo, {n}. Mañana lo cumples.'],
+    mixed:['Cumpliste {y} de {c}. No está mal, pero tampoco está bien. Mañana todos.'],
+    water:['{n}, para todo y toma agua. Llevas {w} vasos de {W}.','Agua, {n}. Ahora. No es opcional.','Llevas {w} vasos y a esta hora deberías ir en {e}. Un vaso, ya.'],
+    waterok:['Eso. El próximo te lo pido en {m} minutos.','Bien. No me hagas recordártelo de nuevo.'],
+    waterdone:['Meta de agua cumplida, {n}. Así se hace.'],
+    habits:['Son las {h} y te faltan {c} hábitos. El día no ha terminado.','{n}, todavía no cumples con todo. Márcalos o anda a hacerlos.'],
+    habitsok:['Todos los hábitos listos. Día ganado, {n}.'],
+    habitsno:['Hoy no cumpliste todo, {n}. Mañana no te lo voy a perdonar.'],
+    snooze:['Te doy {m} minutos. Ni uno más.'],
+    nosnooze:['Ya lo postergaste. Se acabaron las excusas.'],
+    skipq:['¿En serio? Lo planificaste tú. Toca otra vez si de verdad no lo vas a hacer.'],
+    brief:['Buenos días, {n}. Hoy tienes {b}. Tu meta de agua es {G}. A trabajar.']
+  },
+  sargento:{
+    intro:['¡{n}! ¡Desde hoy mando yo! ¡Vas a cumplir lo que planifiques, vas a tomar agua y vas a cerrar tus hábitos! ¿Entendido?'],
+    start:['¡{n}! ¡Son las {h}! ¡{t}, ahora! ¡Muévete!','¡Arriba, {n}! ¡Lo planificaste tú! ¡{t}, ya!','¡Se acabó el descanso! ¡A {t}, soldado!'],
+    late:['¡{n}! ¡Tu bloque de {t} empezó a las {h}! ¿Qué haces mirando el celular?'],
+    go:['¡Eso! ¡A las {e} me rindes cuentas!'],
+    check:['¡{n}! ¡Rinde cuentas! ¿Cumpliste {t}, sí o no?'],
+    checks:['¡{n}! ¡Tienes {c} bloques sin rendir cuentas! ¡Uno por uno, ahora!'],
+    yes:['¡Eso, {n}! ¡Así se hace!','¡Cumpliste! ¡Eso es tener palabra, soldado!'],
+    no:['¿Cómo que no? ¡Lo planificaste tú, {n}! ¡Mañana lo haces el doble de bien!','¡Inaceptable! ¡Los campeones no se saltan lo que planifican!'],
+    mixed:['¡{y} de {c}! ¡Eso no alcanza! ¡Mañana los quiero todos!'],
+    water:['¡{n}! ¡Agua! ¡Ahora mismo! ¡Llevas {w} vasos, eso no es nada!','¡Deja todo y toma agua, soldado! ¡Ya!'],
+    waterok:['¡Eso! ¡En {m} minutos te quiero ver con otro!'],
+    waterdone:['¡Meta de agua cumplida! ¡Así me gusta, {n}!'],
+    habits:['¡{n}! ¡Te faltan {c} hábitos! ¡El día no termina hasta que cumplas!'],
+    habitsok:['¡Todos listos! ¡Así se cierra un día, soldado!'],
+    habitsno:['¡Día perdido, {n}! ¡Mañana no hay perdón!'],
+    snooze:['¡{m} minutos! ¡Ni uno más!'],
+    nosnooze:['¡Se acabaron las excusas! ¡Hazlo ya!'],
+    skipq:['¿Me estás diciendo que no? ¡Toca otra vez si te atreves!'],
+    brief:['¡Buenos días, {n}! ¡Hoy tienes {b}! ¡Meta de agua: {G}! ¡A darle!']
+  }
+};
+/* Títulos cortos para los avisos con la app cerrada */
+const PT={
+  suave:{water:'Un vaso de agua',wbody:'Un vaso ahora y sigues. Tu meta de hoy: {G}.',check:'¿Cómo te fue con {t}?',again:'Todavía no me cuentas de {t}',habits:'Revisa tus hábitos',last:'Último aviso de hábitos',brief:'Buenos días'},
+  firme:{water:'Agua. Ahora.',wbody:'Para todo y toma un vaso. Tu meta de hoy: {G}.',check:'¿Cumpliste {t}?',again:'Me debes una respuesta: {t}',habits:'Te faltan hábitos',last:'Último aviso: tus hábitos',brief:'Tu día'},
+  sargento:{water:'¡Agua, soldado!',wbody:'¡Un vaso, ahora! ¡Meta de hoy: {G}!',check:'¡Rinde cuentas: {t}!',again:'¡Todavía no respondes: {t}!',habits:'¡Hábitos pendientes!',last:'¡Último aviso!',brief:'¡Arriba!'}
+};
+function fill(s,o){
+  const n=firstName()||(CO().tone==='sargento'?'soldado':'');
+  if(!n)s=s.replace(/¡\{n\}! /g,'¡Oye! ').replace(/\{n\}, /g,'').replace(/, \{n\}/g,'');
+  s=s.replace(/\{(\w)\}/g,(m,k)=>k==='n'?n:o&&o[k]!=null?String(o[k]):'');
+  return s.replace(/(^|[.!?] )([¡¿]?)(\p{Ll})/gu,(m,a,b,c)=>a+b+c.toUpperCase());
+}
+function fr(key,o){const c=CO(),bank=FR[c.tone]||FR.firme,list=bank[key]||FR.firme[key]||[''];return fill(list[Math.floor(Math.random()*list.length)],o)}
+
+/* Voz del teléfono: prefiere una voz en español de Chile o Latinoamérica */
+const canSpeak='speechSynthesis' in window;
+let voiceUnlocked=false;
+function pickVoice(){
+  try{const vs=speechSynthesis.getVoices()||[],L=v=>(v.lang||'').replace('_','-').toLowerCase(),good=/google|natural|premium|enhanced|siri|paulina|m[oó]nica|jorge|diego|sabina|helena/i;
+    for(const p of ['es-cl','es-419','es-us','es-mx','es-ar','es-co','es-es','es']){const x=vs.find(v=>L(v).startsWith(p)&&good.test(v.name))||vs.find(v=>L(v).startsWith(p));if(x)return x}}catch(e){}
+  return null;
+}
+function say(t){
+  if(!canSpeak||!CO().voice||!t)return;
+  try{const sp=speechSynthesis;sp.cancel();
+    const u=new SpeechSynthesisUtterance(String(t).replace(/[^\p{L}\p{N}\p{P}\s]/gu,'').slice(0,320)),v=pickVoice(),tn=CO().tone;
+    if(v){u.voice=v;u.lang=v.lang}else u.lang='es-CL';
+    u.rate=tn==='sargento'?1.1:tn==='suave'?.96:1.03;u.pitch=tn==='sargento'?.8:tn==='suave'?1.08:.95;
+    const b=document.querySelectorAll('.co-say');b.forEach(x=>x.classList.add('talking'));u.onend=u.onerror=()=>b.forEach(x=>x.classList.remove('talking'));
+    sp.speak(u);
+  }catch(e){}
+}
+/* En iPhone la voz y el sonido solo se activan después de un toque */
+document.addEventListener('pointerdown',()=>{if(voiceUnlocked||!canSpeak)return;voiceUnlocked=true;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}},{passive:true,capture:true});
+if(canSpeak)try{speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{})}catch(e){}
+function whistle(){
+  const a=actx;if(!a||a.state!=='running')return;const t=a.currentTime;
+  const o=a.createOscillator(),g=a.createGain(),l=a.createOscillator(),lg=a.createGain();
+  o.type='sine';o.frequency.value=2800;l.frequency.value=34;lg.gain.value=160;l.connect(lg).connect(o.frequency);
+  [[0,.32],[.42,.95]].forEach(([s,e])=>{g.gain.setValueAtTime(0,t+s);g.gain.linearRampToValueAtTime(.16,t+s+.02);g.gain.setValueAtTime(.16,t+e-.05);g.gain.linearRampToValueAtTime(0,t+e)});
+  o.connect(g).connect(a.destination);o.start(t);l.start(t);o.stop(t+1);l.stop(t+1);
+}
+
+/* Estado del día en este dispositivo: qué ya te mostré, hasta cuándo pospusiste, cuándo tomaste agua */
+const hm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
+const hmMin=x=>{const [h,m]=x.split(':').map(Number);return h*60+m};
+const atDay=(x,k=today())=>{const [y,mo,d]=k.split('-').map(Number),[h,m]=x.split(':').map(Number);return new Date(y,mo-1,d,h,m).getTime()};
+let coS=null;
+function CS(){
+  const k=today();
+  if(!coS||coS.me!==me){try{coS=JSON.parse(localStorage.getItem('esquina.coach.'+me)||'null')}catch(e){coS=null}}
+  if(!coS||coS.day!==k)coS={me,day:k,seen:{},snz:{},n:{},lastDrink:0,lastPrompt:0,ml:null,lastSync:coS&&coS.lastSync||0};
+  coS.me=me;return coS;
+}
+function csSave(){try{if(coS&&me)localStorage.setItem('esquina.coach.'+me,JSON.stringify(coS))}catch(e){}}
+function coachDrank(){const s=CS();s.lastDrink=Date.now();s.n.wa=0;csSave()}
+
+function dayBlocks(k=today()){return S.week.blocks.filter(b=>b.day===dow(k)).sort((a,b)=>a.start.localeCompare(b.start))}
+function planDone(k,id){const d=WD()[k];return d?d[id]:undefined}
+function setPlan(k,id,v){const D=WD();if(v==null){if(D[k]){delete D[k][id];if(!Object.keys(D[k]).length)delete D[k]}}else(D[k]=D[k]||{})[id]=v?1:0;save('week')}
+function planBtns(b,v){
+  return `<div class="pl"><button type="button" class="pl-b ok ${v===1?'on':''}" data-plan="${esc(b.id)}" data-v="1" aria-pressed="${v===1}" aria-label="Cumplí ${esc(b.title)}">${ICON_OK}</button><button type="button" class="pl-b no ${v===0?'on':''}" data-plan="${esc(b.id)}" data-v="0" aria-pressed="${v===0}" aria-label="No cumplí ${esc(b.title)}">${ICON_NO}</button></div>`;
+}
+const litros=ml=>(ml/1000).toLocaleString('es-CL',{maximumFractionDigits:2})+(ml===1000?' litro':' litros');
+function waterInfo(){
+  const c=CO(),w=W(),ml=w.log[today()]||0,now=Date.now(),f=atDay(c.water.from),t=atDay(c.water.to),p=Math.max(0,Math.min(1,(now-f)/Math.max(1,t-f)));
+  return {ml,goal:w.goal,w:Math.floor(ml/250),W:Math.ceil(w.goal/250),e:Math.max(1,Math.ceil(w.goal*p/250)),G:litros(w.goal),inWin:now>=f&&now<=t,from:f,to:t};
+}
+/* Bloques que ya terminaron (hoy y ayer) y que todavía no respondes */
+function owedPlans(){
+  const c=CO(),k=today(),y=addDays(k,-1),nowHM=hm(new Date()),out=[];
+  for(const kk of [y,k])for(const b of dayBlocks(kk))
+    if((kk<k||b.end<=nowHM)&&planDone(kk,b.id)===undefined&&atDay(b.end,kk)>c.since)out.push({k:kk,id:b.id});
+  return out.slice(-8);
+}
+function coachDue(){
+  const c=CO(),s=CS(),k=today(),now=Date.now(),nowHM=hm(new Date());
+  if(!c.intro)return {kind:'intro'};
+  for(const b of dayBlocks(k))
+    if(b.start<=nowHM&&nowHM<b.end&&planDone(k,b.id)===undefined&&!s.seen['st:'+b.id]&&!(s.snz['st:'+b.id]>now))
+      return {kind:'start',b,late:hmMin(nowHM)-hmMin(b.start)>15};
+  const owed=owedPlans();if(owed.length)return {kind:'check',items:owed};
+  const tb=dayBlocks(k);
+  if(tb.length&&nowHM>='05:00'&&nowHM<'12:00'&&!s.seen.br)return {kind:'brief'};
+  const wi=waterInfo();
+  if(wi.inWin&&wi.ml<wi.goal&&now>=Math.max(s.lastDrink||0,s.lastPrompt||0,wi.from-c.water.every*6e4)+c.water.every*6e4)return {kind:'water'};
+  const hp=H().list.filter(h=>!doneOn(k)[h.id]);
+  if(hp.length&&nowHM>=c.habitsAt&&!s.seen.hb&&!(s.snz.hb>now))return {kind:'habits'};
+  return null;
+}
+let co=null;
+function coachBlocked(){
+  const a=document.activeElement;
+  return !me||ownerMode||loadingView||document.visibilityState!=='visible'||!$('#alarm').hidden||!$('#night').hidden||$('#app').hidden||
+    [...document.querySelectorAll('.sheet-bg')].some(x=>!x.hidden)||!!(a&&a.closest&&a.closest('#view')&&a.matches('input,textarea,select'));
+}
+function coachTick(){
+  if(!me||co)return;const c=CO();if(!c.on)return;
+  const s=CS(),ml=W().log[today()]||0;if(s.ml!=null&&ml>s.ml){s.lastDrink=Date.now();s.n.wa=0}s.ml=ml;csSave();
+  if(coachBlocked())return;
+  const d=coachDue();if(d)coachShow(d);
+}
+setInterval(coachTick,20000);
+
+function coachMsg(){
+  const c=CO(),k=today();
+  if(co.kind==='intro')return fr('intro');
+  if(co.kind==='start')return fr(co.late?'late':'start',{t:co.b.title,h:co.b.start});
+  if(co.kind==='check'){const it=co.items;if(it.length===1){const b=S.week.blocks.find(x=>x.id===it[0].id);return fr('check',{t:b?b.title:'tu bloque'})}return fr('checks',{c:it.length})}
+  if(co.kind==='water')return fr('water',waterInfo());
+  if(co.kind==='habits')return fr('habits',{c:H().list.filter(h=>!doneOn(k)[h.id]).length,h:c.habitsAt});
+  if(co.kind==='brief'){const tb=dayBlocks(k),f=tb[0];return fr('brief',{b:tb.length===1?'un bloque: '+f.title+' a las '+f.start:tb.length+' bloques y el primero es '+f.title+' a las '+f.start,G:litros(W().goal)})}
+  return '';
+}
+function coachShow(d){
+  co={...d,phase:'ask',mood:''};co.msg=coachMsg();
+  drawCoach();const el=$('#coach');el.hidden=false;el.scrollTop=0;lockScroll(true);
+  try{navigator.vibrate&&navigator.vibrate([260,120,260])}catch(e){}
+  whistle();say(co.msg);
+}
+function coachResult(mood,msg){co.phase='result';co.mood=mood;co.msg=msg;drawCoach();say(msg);try{navigator.vibrate&&navigator.vibrate(mood==='fail'?[400,100,400]:60)}catch(e){}if(mood==='win')FX.rain()}
+function coachClose(){co=null;const el=$('#coach');el.hidden=true;el.innerHTML='';el.className='overlay coach';lockScroll(false);render();syncAvisosSoon();setTimeout(coachTick,900)}
+function coachLine(){
+  const c=CO(),k=today(),nowHM=hm(new Date()),tb=dayBlocks(k),owe=owedPlans().length,wi=waterInfo(),hp=H().list.filter(h=>!doneOn(k)[h.id]).length;
+  const ok=tb.filter(b=>planDone(k,b.id)===1).length;
+  if(owe)return `Me debes ${owe} ${owe===1?'respuesta':'respuestas'}. Rinde cuentas.`;
+  if(wi.inWin&&wi.ml<wi.goal&&wi.w<wi.e)return `Vas atrasado con el agua: ${wi.w} de ${wi.e} vasos a esta hora.`;
+  if(hp&&nowHM>=c.habitsAt)return `Son más de las ${c.habitsAt} y te faltan ${hp} ${hp===1?'hábito':'hábitos'}.`;
+  if(tb.length&&ok===tb.length)return 'Cumpliste todo lo planificado hoy. Así me gusta.';
+  if(!S.week.blocks.length)return 'Arma tu semana en Semana y yo me encargo de que la cumplas.';
+  return c.tone==='sargento'?'¡Vas bien, pero no aflojes!':c.tone==='suave'?'Vas bien. Sigue a tu ritmo.':'Vas bien. No aflojes.';
+}
+let pushDev='na';
+function coachCard(){
+  const c=CO();
+  if(!c.on)return `<div class="card co-card off"><div class="co-head"><span class="co-av">${ICON_WHISTLE}</span><div style="flex:1;min-width:0"><div class="eyebrow">Tu instructor</div><div class="co-line">Está apagado. Nadie te va a exigir nada.</div></div></div><div class="co-btns"><button class="btn pri" type="button" data-co-on>Encender</button></div></div>`;
+  const k=today(),nowHM=hm(new Date()),tb=dayBlocks(k),ok=tb.filter(b=>planDone(k,b.id)===1).length,wi=waterInfo(),hn=H().list.length,hd=H().list.filter(h=>doneOn(k)[h.id]).length;
+  const next=tb.find(b=>b.start>nowHM);
+  const push=pushDev==='off'?`<button class="btn pri" type="button" data-co-push>Activar avisos</button>`:pushDev==='ios'?`<button class="btn pri" type="button" data-settings="coach">Avisos en iPhone</button>`:'';
+  return `<div class="card co-card" style="margin-bottom:12px"><div class="co-head"><span class="co-av">${ICON_WHISTLE}</span><div style="flex:1;min-width:0"><div class="eyebrow">Tu instructor · ${TONES[c.tone]}</div><div class="co-line">${esc(coachLine())}</div></div><button class="co-say" type="button" data-co-say aria-label="Escuchar al instructor">${ICON_SPEAK}</button></div>
+  <div class="co-stats"><div><b class="num">${ok}/${tb.length}</b><span>planes</span></div><div><b class="num">${wi.w}/${wi.W}</b><span>vasos</span></div><div><b class="num">${hd}/${hn}</b><span>hábitos</span></div></div>
+  ${next?`<div class="note">Próximo: <b>${esc(next.title)}</b> a las ${next.start}</div>`:''}
+  <div class="co-btns">${push}<button class="btn" type="button" data-settings="coach">Ajustar</button></div></div>`;
+}
+function drawCoach(){
+  const el=$('#coach'),c=CO(),s=CS(),k=today();
+  el.className='overlay coach t-'+c.tone+(co.mood?' '+co.mood:'');
+  let label='',big='',sub='',body='',acts='',foot='';
+  const kind=co.kind,ph=co.phase;
+  if(ph==='result'){
+    label=co.mood==='win'?'Bien hecho':co.mood==='fail'?'Te estoy mirando':'Rendiste cuentas';
+    big=co.mood==='win'?'¡Eso!':co.mood==='fail'?'Mal.':'Ojo.';
+    acts=`<button class="btn red" type="button" data-co="close">${c.tone==='sargento'?'¡Entendido!':'Entendido'}</button>`;
+  }else if(kind==='intro'){
+    label='Preséntate';big='Tu instructor';
+    body=`<div class="co-tones">${Object.entries({suave:'Te recuerda con cariño.',firme:'Te exige y te reta si fallas.',sargento:'Te grita. Sin piedad.'}).map(([t,d])=>`<button type="button" data-co="tone" data-v="${t}" class="${c.tone===t?'on':''}" aria-pressed="${c.tone===t}"><b>${TONES[t]}</b><span>${d}</span></button>`).join('')}</div>
+      ${S.week.blocks.length?'':'<div class="co-note">Todavía no tienes nada planificado. Arma tu semana en la pestaña Semana y yo me encargo de que la cumplas.</div>'}`;
+    acts=(pushDev==='off'?`<button class="btn" type="button" data-co="push">Avisarme también con la app cerrada</button>`:'')+`<button class="btn red" type="button" data-co="introok">Empezar</button>`;
+    foot='Puedes cambiar el tono, el agua y la hora de los hábitos en Ajustes.';
+  }else if(kind==='start'){
+    const b=co.b,a=AREAS[b.area]||AREAS.salud;label=co.late?'Vas tarde':'Hora de cumplir';big=esc(b.title);sub=`${b.start}–${b.end} · ${esc(a.n)}`;
+    if(ph==='confirm')acts=`<button class="btn red" type="button" data-co="go">Tienes razón, voy</button><button class="btn" type="button" data-co="skipok">Sí, hoy no lo hago</button>`;
+    else acts=`<button class="btn red" type="button" data-co="go">${c.tone==='sargento'?'¡Voy!':co.late?'Ya estoy en eso':'Voy'}</button>`+
+      (s.n['st:'+b.id]?'':`<button class="btn" type="button" data-co="later">En 10 minutos</button>`)+`<button class="btn ghost" type="button" data-co="skip">Hoy no lo hago</button>`;
+  }else if(kind==='check'){
+    const it=co.items.map(x=>({...x,b:S.week.blocks.find(q=>q.id===x.id)})).filter(x=>x.b);
+    label='Rinde cuentas';big=it.length===1?esc(it[0].b.title):it.length+' bloques';
+    body=`<div class="co-list">${it.map(x=>{const v=planDone(x.k,x.id);return `<div class="co-item"><div class="grow"><b>${esc(x.b.title)}</b><span>${x.k===k?'Hoy':'Ayer'} · ${x.b.start}–${x.b.end}</span></div><div class="co-yn"><button type="button" class="y ${v===1?'on':''}" data-co="ans" data-k="${x.k}" data-id="${esc(x.id)}" data-v="1">Sí</button><button type="button" class="n ${v===0?'on':''}" data-co="ans" data-k="${x.k}" data-id="${esc(x.id)}" data-v="0">No</button></div></div>`}).join('')}</div>`;
+    foot='No se cierra hasta que respondas.';
+  }else if(kind==='water'){
+    const wi=waterInfo();label='Hora del agua';big=`${wi.w} de ${wi.W}`;sub='vasos de hoy';
+    body=`<div class="co-water" aria-hidden="true">${[...Array(Math.min(16,wi.W))].map((_,i)=>`<i class="${i<wi.w?'on':i<wi.e?'due':''}"></i>`).join('')}</div>`;
+    const left=2-(s.n.wa||0);
+    acts=`<div class="row2"><button class="btn water" type="button" data-co="w" data-ml="250">+ Vaso</button><button class="btn water" type="button" data-co="w" data-ml="500">+ Botella</button></div>`+(left>0?`<button class="btn ghost" type="button" data-co="later">En 10 minutos (${left===1?'última vez':'quedan '+left})</button>`:'');
+    foot=left>0?'':esc(fr('nosnooze'));
+  }else if(kind==='habits'){
+    const hl=H().list,pend=hl.filter(h=>!doneOn(k)[h.id]).length;label='Cierre del día';big=pend?pend+(pend===1?' pendiente':' pendientes'):'Listo';
+    body=`<div class="co-list">${hl.map(h=>{const d=!!doneOn(k)[h.id];return `<button type="button" class="co-item co-hab ${d?'done':''}" data-co="hab" data-id="${esc(h.id)}" aria-pressed="${d}"><span class="ck">${ICON_OK}</span><span class="grow"><b>${esc(h.name)}</b></span><span class="num">+${+h.pts}</span></button>`}).join('')}</div>`;
+    if(ph==='confirm')acts=`<button class="btn red" type="button" data-co="later">Tienes razón, voy a hacerlos</button><button class="btn" type="button" data-co="skipok">Sí, hoy no puedo</button>`;
+    else acts=((s.n.hb||0)<3?`<button class="btn" type="button" data-co="later">Voy a hacerlos (30 min)</button>`:'')+`<button class="btn ghost" type="button" data-co="skip">Hoy no puedo</button>`;
+    foot='Toca cada hábito que ya cumpliste.';
+  }else if(kind==='brief'){
+    const tb=dayBlocks(k);label='Tu día';big='Hoy';
+    body=`<div class="co-list">${tb.map(b=>`<div class="co-item"><span class="dot" style="background:${(AREAS[b.area]||AREAS.salud).c}"></span><div class="grow"><b>${esc(b.title)}</b><span>${b.start}–${b.end}${b.lock?' · protegido':''}</span></div></div>`).join('')}</div><div class="co-note">Agua: ${esc(litros(W().goal))} · Hábitos: ${H().list.length}</div>`;
+    acts=`<button class="btn red" type="button" data-co="close">${c.tone==='sargento'?'¡A darle!':'Vamos'}</button>`;
+  }
+  el.innerHTML=`<div class="co-in">
+    <div class="co-top"><span class="co-av">${ICON_WHISTLE}</span><div class="co-who"><div class="eyebrow">Tu instructor · ${TONES[c.tone]}</div><b>${esc(label)}</b></div><button class="co-say" type="button" data-co="say" aria-label="Escuchar de nuevo">${ICON_SPEAK}</button></div>
+    ${big?`<div class="co-big">${big}</div>`:''}${sub?`<div class="co-sub num">${sub}</div>`:''}
+    <p class="co-msg">${esc(co.msg)}</p>
+    ${body}
+    ${acts?`<div class="co-acts">${acts}</div>`:''}
+    ${foot?`<div class="co-foot">${foot}</div>`:''}
+  </div>`;
+}
+$('#coach').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-co]');if(!b||!co)return;
+  const a=b.dataset.co,c=CO(),s=CS(),k=today(),now=Date.now();
+  audio();
+  if(a==='say')return say(co.msg);
+  if(a==='close'){if(co.kind==='brief'){s.seen.br=1;csSave()}return coachClose()}
+  if(co.kind==='intro'){
+    if(a==='tone'){c.tone=b.dataset.v;save('meta');co.msg=fr('intro');drawCoach();say(co.msg);return}
+    if(a==='push'){b.disabled=true;await pushEnable();if(co)drawCoach();return}
+    if(a==='introok'){c.intro=true;c.since=now;save('meta');s.seen.br=1;s.lastPrompt=now;csSave();toast(c.tone==='sargento'?'¡A la orden!':'Tu instructor está activo');return coachClose()}
+  }
+  if(co.kind==='start'){const id=co.b.id;
+    if(a==='go'){s.seen['st:'+id]=1;csSave();const m=fr('go',{e:co.b.end});toast(m);say(m);return coachClose()}
+    if(a==='later'){s.snz['st:'+id]=now+10*6e4;s.n['st:'+id]=1;csSave();const m=fr('snooze',{m:10});toast(m);say(m);return coachClose()}
+    if(a==='skip'){co.phase='confirm';co.msg=fr('skipq');drawCoach();say(co.msg);return}
+    if(a==='skipok'){s.seen['st:'+id]=1;csSave();setPlan(k,id,0);return coachResult('fail',fr('no'))}
+  }
+  if(co.kind==='check'&&a==='ans'){
+    const v=+b.dataset.v;setPlan(b.dataset.k,b.dataset.id,v);
+    const it=co.items.filter(x=>S.week.blocks.some(q=>q.id===x.id)),done=it.filter(x=>planDone(x.k,x.id)!==undefined);
+    if(done.length<it.length){drawCoach();if(v)burstAt(`#coach [data-id="${CSS.escape(b.dataset.id)}"][data-v="1"]`);return}
+    const y=it.filter(x=>planDone(x.k,x.id)===1).length;
+    if(y)toast('+'+y*PLAN_XP+' XP por cumplir lo planificado');
+    return y===it.length?coachResult('win',fr('yes')):y===0?coachResult('fail',fr('no')):coachResult('mixed',fr('mixed',{y,c:it.length}));
+  }
+  if(co.kind==='water'){
+    if(a==='w'){const ml=+b.dataset.ml,w=W(),before=w.log[k]||0;w.log[k]=before+ml;coachDrank();s.lastPrompt=now;s.ml=w.log[k];csSave();save('habits');
+      if(before<w.goal&&w.log[k]>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');return coachResult('win',fr('waterdone'))}
+      const m=fr('waterok',{m:c.water.every});toast('+'+ml+' ml · '+m);say(m);return coachClose()}
+    if(a==='later'){s.n.wa=(s.n.wa||0)+1;s.lastPrompt=now-c.water.every*6e4+10*6e4;csSave();const m=fr('snooze',{m:10});toast(m);say(m);return coachClose()}
+  }
+  if(co.kind==='habits'){
+    if(a==='hab'){const h=H().list.find(x=>x.id===b.dataset.id);if(!h)return;const log=H().log;log[k]=log[k]||{};
+      if(log[k][h.id]){delete log[k][h.id];if(!Object.keys(log[k]).length)delete log[k]}else{log[k][h.id]=h.pts;toast('+'+h.pts+' XP')}
+      save('habits');if(H().list.every(x=>doneOn(k)[x.id])){s.seen.hb=1;csSave();return coachResult('win',fr('habitsok'))}
+      drawCoach();return}
+    if(a==='later'){s.n.hb=(s.n.hb||0)+1;s.snz.hb=now+30*6e4;csSave();const m=fr('snooze',{m:30});toast(m);say(m);return coachClose()}
+    if(a==='skip'){co.phase='confirm';co.msg=fr('skipq');drawCoach();say(co.msg);return}
+    if(a==='skipok'){s.seen.hb=1;csSave();return coachResult('fail',fr('habitsno'))}
+  }
+});
+
+/* Avisos con la app cerrada (Web Push). En iPhone solo funcionan con la app instalada en la pantalla de inicio. */
+const pushOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const b64uBytes=x=>{x=String(x).replace(/-/g,'+').replace(/_/g,'/');while(x.length%4)x+='=';const r=atob(x),u=new Uint8Array(r.length);for(let i=0;i<r.length;i++)u[i]=r.charCodeAt(i);return u};
+const b64uStr=buf=>{let r='';for(const x of new Uint8Array(buf))r+=String.fromCharCode(x);return btoa(r).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
+async function swReg(){
+  if(!('serviceWorker' in navigator))return null;
+  try{const r=await navigator.serviceWorker.getRegistration();if(r&&r.active)return r}catch(e){}
+  return Promise.race([navigator.serviceWorker.ready,new Promise(r=>setTimeout(()=>r(null),4000))]);
+}
+async function pushState(){
+  if(!pushOK())return isIOS&&!standalone()?'ios':'na';
+  if(Notification.permission==='denied')return 'denied';
+  const reg=await swReg();if(!reg)return 'na';
+  const sub=await reg.pushManager.getSubscription().catch(()=>null);
+  return sub&&Notification.permission==='granted'?'on':'off';
+}
+async function refreshPush(){const v=await pushState().catch(()=>'na');if(v!==pushDev){pushDev=v;if(me&&!ownerMode&&tab==='inicio')render()}return v}
+async function pushEnable(){
+  if(!pushOK()){toast(isIOS&&!standalone()?'En iPhone primero agrega la app a tu pantalla de inicio y ábrela desde ahí':'Este navegador no permite avisos');return false}
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){pushDev=perm==='denied'?'denied':'off';toast('Sin permiso no puedo avisarte con la app cerrada');return false}
+    const reg=await swReg();if(!reg)throw new Error('sin service worker');
+    const {data:key,error}=await sb.rpc('instructor_clave');if(error||!key)throw error||new Error('sin clave');
+    let sub=await reg.pushManager.getSubscription();
+    if(sub){const cur=sub.options&&sub.options.applicationServerKey;if(cur&&b64uStr(cur)!==key){await sub.unsubscribe().catch(()=>{});sub=null}}
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64uBytes(key)});
+    const j=sub.toJSON();
+    const {error:e2}=await sb.from('push_subs').upsert({user_id:me,endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth},{onConflict:'user_id,endpoint'});
+    if(e2){if(e2.code==='23514'){toast('Este navegador no es compatible con los avisos');return false}throw e2}
+    pushDev='on';CO().push=true;save('meta');syncAvisos(true);toast('Listo: te aviso aunque la app esté cerrada');return true;
+  }catch(err){console.warn('avisos',err);toast('No se pudieron activar los avisos. Inténtalo otra vez.');return false}
+}
+async function pushDisable(){
+  try{
+    const reg=await swReg(),sub=reg&&await reg.pushManager.getSubscription();
+    if(sub){await sb.from('push_subs').delete().eq('endpoint',sub.endpoint);await sub.unsubscribe().catch(()=>{})}
+    const {data}=await sb.from('push_subs').select('endpoint').limit(1);
+    if(!data||!data.length){CO().push=false;save('meta');await sb.from('avisos').delete().is('enviado_at',null)}
+    pushDev='off';toast('Avisos desactivados en este dispositivo');
+  }catch(e){toast('No se pudo. Revisa tu conexión.')}
+}
+/* Al cerrar sesión, este dispositivo deja de recibir los avisos de esa cuenta */
+async function pushForget(){
+  try{const reg='serviceWorker' in navigator&&await navigator.serviceWorker.getRegistration(),sub=reg&&reg.pushManager&&await reg.pushManager.getSubscription();
+    if(sub){await Promise.race([sb.from('push_subs').delete().eq('endpoint',sub.endpoint),new Promise(r=>setTimeout(r,2500))]);await sub.unsubscribe().catch(()=>{})}}catch(e){}
+}
+/* Arma los recordatorios de las próximas 36 horas y los deja en el servidor */
+function planAvisos(){
+  const c=CO(),s=CS(),now=Date.now(),end=now+36*36e5,k0=today(),out=[],T=PT[c.tone]||PT.firme;
+  const add=(at,titulo,cuerpo,tag)=>{if(at>now+20e3&&at<=end)out.push({at:new Date(at).toISOString(),titulo:str(titulo,80),cuerpo:str(cuerpo,240),tag:str(tag,60),url:'app.html#coach'})};
+  for(let i=0;i<2;i++){
+    const k=addDays(k0,i),wg=W().goal;
+    for(const b of dayBlocks(k)){
+      if(planDone(k,b.id)!==undefined)continue;
+      if(!(i===0&&s.seen['st:'+b.id]))add(atDay(b.start,k),b.title+' · '+b.start,fr('start',{t:b.title,h:b.start}),'b'+b.id+k);
+      add(atDay(b.end,k),fill(T.check,{t:b.title}),fr('check',{t:b.title}),'c'+b.id+k);
+      add(atDay(b.end,k)+45*6e4,fill(T.again,{t:b.title}),'Entra y dime si lo cumpliste.','c'+b.id+k);
+    }
+    const every=c.water.every*6e4,f=atDay(c.water.from,k),t=atDay(c.water.to,k);
+    if(i===0){const wi=waterInfo();let left=Math.ceil((wi.goal-wi.ml)/250)+2;if(wi.ml<wi.goal)for(let at=Math.max(f,(s.lastDrink||0)+every,now+5*6e4);at<=t&&left>0;at+=every,left--)add(at,T.water,fill(T.wbody,{G:litros(wg)}),'agua')}
+    else{let left=Math.ceil(wg/250)+2;for(let at=f;at<=t&&left>0;at+=every,left--)add(at,T.water,fill(T.wbody,{G:litros(wg)}),'agua')}
+    const pend=i===0?H().list.filter(h=>!doneOn(k)[h.id]).length:H().list.length;
+    if(pend&&!(i===0&&s.seen.hb)){add(atDay(c.habitsAt,k),T.habits,fr('habits',{c:pend,h:c.habitsAt}),'habitos');add(atDay(c.habitsAt,k)+45*6e4,T.last,fr('nosnooze'),'habitos')}
+    if(i===1){const tb=dayBlocks(k);if(tb.length)add(atDay(c.water.from,k),T.brief,fr('brief',{b:tb.length===1?'un bloque: '+tb[0].title+' a las '+tb[0].start:tb.length+' bloques y el primero es '+tb[0].title+' a las '+tb[0].start,G:litros(wg)}),'dia')}
+  }
+  return out.sort((a,b)=>a.at.localeCompare(b.at)).slice(0,130);
+}
+let avT=null,avBusy=false,avAgain=false,avSig='';
+function syncAvisosSoon(){if(!me)return;clearTimeout(avT);avT=setTimeout(()=>syncAvisos(),2500)}
+async function syncAvisos(force){
+  if(!me||!CO().push)return;
+  if(avBusy){avAgain=true;return}
+  const list=CO().on?planAvisos():[],sig=JSON.stringify(list.map(a=>[a.at.slice(0,16),a.tag,a.titulo]));
+  const s=CS();if(!force&&sig===avSig&&Date.now()-(s.lastSync||0)<20*6e4)return;
+  const who=me;avBusy=true;
+  try{
+    const del=await sb.from('avisos').delete().is('enviado_at',null).neq('tag','prueba');if(del.error||who!==me)return;
+    if(list.length){const ins=await sb.from('avisos').insert(list);if(ins.error)throw ins.error}
+    avSig=sig;if(who===me){CS().lastSync=Date.now();csSave()}
+  }catch(e){console.warn('avisos',e)}
+  finally{avBusy=false;if(avAgain){avAgain=false;syncAvisosSoon()}}
+}
+let lastTest=0;
+async function pushTest(btn){
+  if(!CO().push||pushDev!=='on')return toast('Primero activa los avisos en este dispositivo');
+  if(Date.now()-lastTest<30000)return toast('Espera un poco antes de probar otra vez');
+  lastTest=Date.now();btn.disabled=true;
+  const {error}=await sb.from('avisos').insert({at:new Date(Date.now()+3000).toISOString(),titulo:'Prueba del instructor',cuerpo:'Si ves esto, te puedo avisar aunque la app esté cerrada.',tag:'prueba',url:'app.html#coach'});
+  btn.disabled=false;toast(error?'No se pudo mandar la prueba':'Te llega en menos de un minuto. Puedes cerrar la app.');
+}
+setInterval(()=>{if(me&&document.visibilityState==='visible')syncAvisos()},10*6e4);
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.coach&&me)setTimeout(coachTick,300)});
+
 /* ---------- ajustes ---------- */
 let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e});
@@ -1107,6 +1536,7 @@ function openSettings(focus){
   <div class="set-sec"><h4>Tu perfil</h4>
     <form class="row" id="st-name"><label>Nombre<input id="st-n" maxlength="40" value="${esc(S.meta.name)}" required></label><button class="btn" type="submit">Guardar</button></form>
     <div class="note">Entras con ${esc(email)}</div></div>
+  ${coachSettings()}
   <div class="set-sec" id="set-cd"><h4>Tu fecha importante</h4>
     <form class="row" id="st-cd"><label>Qué es<input id="st-cdl" maxlength="40" value="${esc(cd.label)}" placeholder="Ej: Mi pelea, examen de grado"></label><label>Fecha<input id="st-cdd" type="date" value="${esc(cd.date)}"></label><button class="btn" type="submit">Guardar</button></form>
     ${cd.date?'<button class="btn sm" type="button" data-cd-clear style="justify-self:start">Quitar fecha</button>':''}</div>
@@ -1128,6 +1558,31 @@ function openSettings(focus){
     <form class="row" id="st-del" style="margin-top:6px"><label>Para borrar tu cuenta y todos tus datos, escribe BORRAR<input id="st-d" autocomplete="off" maxlength="10"></label><button class="btn red" type="submit">Borrar mi cuenta</button></form></div>`;
   showSheet($('#settings'));
   if(focus==='cd')setTimeout(()=>{const el=$('#set-cd');el.scrollIntoView({block:'center'});$('#st-cdl').focus()},60);
+  if(focus==='coach')setTimeout(()=>{const el=$('#set-coach');if(el)el.scrollIntoView({block:'start'})},60);
+  drawPushRow();
+}
+function coachSettings(){
+  const c=CO(),w=c.water;
+  return `<div class="set-sec" id="set-coach"><h4>Tu instructor</h4>
+    <div class="note">Te recuerda lo que planificaste, te pide cuentas, te obliga a tomar agua y a cerrar tus hábitos. Su pantalla no se cierra hasta que respondes.</div>
+    <form class="row" id="st-coach">
+      <label class="inl"><input type="checkbox" id="co-on" ${c.on?'checked':''}> Instructor encendido</label>
+      <label class="inl"><input type="checkbox" id="co-voice" ${c.voice?'checked':''} ${canSpeak?'':'disabled'}> Que me hable en voz alta</label>
+      <label>Tono<select id="co-tone">${Object.entries(TONES).map(([k,n])=>`<option value="${k}" ${c.tone===k?'selected':''}>${n}</option>`).join('')}</select></label>
+      <label>Agua cada<select id="co-every">${WATER_EVERY.map(m=>`<option value="${m}" ${w.every===m?'selected':''}>${m<60?m+' min':m===60?'1 hora':(m/60).toLocaleString('es-CL')+' horas'}</option>`).join('')}</select></label>
+      <label>Agua desde<input id="co-from" type="time" value="${esc(w.from)}" required></label>
+      <label>Agua hasta<input id="co-to" type="time" value="${esc(w.to)}" required></label>
+      <label>Revisar hábitos a las<input id="co-hab" type="time" value="${esc(c.habitsAt)}" required></label>
+      <button class="btn" type="submit">Guardar</button>
+    </form>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-co-try>${ICON_SPEAK} Escuchar</button></div>
+    <div class="co-push" id="co-push"><div class="note">Revisando avisos…</div></div></div>`;
+}
+async function drawPushRow(){
+  const el=$('#co-push');if(!el)return;const v=await refreshPush();if(!$('#co-push'))return;
+  const txt={on:'Avisos activados en este dispositivo. Te llegan aunque la app esté cerrada.',off:'Con los avisos te recuerdo todo aunque la app esté cerrada.',denied:'Bloqueaste los avisos para esta página. Actívalos en los ajustes del navegador y vuelve aquí.',
+    ios:'En iPhone los avisos funcionan con la app instalada: en Safari toca Compartir, elige Agregar a pantalla de inicio y abre Mi Esquina desde ese ícono.',na:'Este navegador no permite avisos con la app cerrada. Mientras la tengas abierta, igual te hablo y te exijo.'}[v];
+  el.innerHTML=`<div class="note">${txt}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${v==='off'?'<button class="btn pri" type="button" data-push-on>Activar avisos</button>':''}${v==='on'?'<button class="btn" type="button" data-push-test>Probar aviso</button><button class="btn" type="button" data-push-off>Desactivar en este dispositivo</button>':''}</div>`;
 }
 function closeSettings(){const el=$('#settings');hideSheet(el,()=>{if(el.hidden)$('#set-body').innerHTML=''})}
 $('#gear').addEventListener('click',()=>openSettings());
@@ -1138,9 +1593,11 @@ function importData(raw){
   const data=obj(j&&j.data?j.data:j);const found=DOCS.filter(d=>data[d]&&typeof data[d]==='object');
   if(!found.length)return toast('Eso no parece un respaldo de Mi Esquina');
   if(!confirm('Esto reemplaza tus datos actuales de '+found.length+' secciones por los del respaldo. ¿Seguir?'))return;
-  const keepName=S.meta.name;
+  const keepName=S.meta.name,keepCoach=CO();
   for(const d of found){S[d]=clean(d,data[d]);save(d)}
   if(!S.meta.name)S.meta.name=keepName;
+  if(!obj(data.meta).coach)S.meta.coach=keepCoach; // respaldos de antes del instructor
+
   S.meta.onboarded=true;save('meta');
   tab='inicio';closeSettings();drawTabs();entering=true;render();toast('Datos importados');
 }
@@ -1149,6 +1606,10 @@ $('#settings').addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
   if(ds.closeSet!==undefined)return closeSettings();
   if(ds.ownerOpen!==undefined){closeSettings();enterOwner();return}
+  if(ds.coTry!==undefined){audio();say(fr('start',{t:'tu primer bloque',h:hm(new Date())}));return}
+  if(ds.pushOn!==undefined){b.disabled=true;await pushEnable();drawPushRow();render();return}
+  if(ds.pushOff!==undefined){b.disabled=true;await pushDisable();drawPushRow();render();return}
+  if(ds.pushTest!==undefined){await pushTest(b);return}
   if(ds.cdClear!==undefined){S.meta.countdown={label:'',date:''};save('meta');render();openSettings();toast('Fecha quitada');return}
   if(ds.install!==undefined&&installEvt){installEvt.prompt();try{await installEvt.userChoice}catch(err){}installEvt=null;openSettings();return}
   if(ds.export!==undefined){const blob=new Blob([JSON.stringify(exportJSON(),null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mi-esquina-'+today()+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}
@@ -1158,6 +1619,13 @@ $('#settings').addEventListener('submit',async e=>{
   e.preventDefault();const id=e.target.id;
   if(id==='st-name'){const n=$('#st-n').value.trim().slice(0,40);if(!n)return toast('Escribe tu nombre');S.meta.name=n;save('meta');render();toast('Nombre guardado');
     sb.from('perfiles').update({nombre:n}).eq('user_id',me).then(()=>{},()=>{});sb.auth.updateUser({data:{nombre:n}}).then(()=>{},()=>{});return}
+  if(id==='st-coach'){const c=CO(),f=$('#co-from').value,t=$('#co-to').value,h=$('#co-hab').value;
+    if(!isHM(f)||!isHM(t)||!isHM(h))return toast('Revisa las horas');if(t<=f)return toast('La hora final del agua debe ser después de la inicial');
+    const wasOn=c.on;c.on=$('#co-on').checked;c.voice=$('#co-voice').checked;c.tone=TONES[$('#co-tone').value]?$('#co-tone').value:'firme';
+    c.water={every:WATER_EVERY.includes(+$('#co-every').value)?+$('#co-every').value:60,from:f,to:t};c.habitsAt=h;
+    if(c.on&&!wasOn){c.since=Date.now()}
+    save('meta');render();syncAvisos(true);toast(c.on?(c.tone==='sargento'?'¡Entendido!':'Instructor guardado'):'Instructor apagado');
+    if(c.on)say(c.tone==='sargento'?'¡Cambios guardados, soldado!':'Listo. Así quedamos.');return}
   if(id==='st-cd'){const l=$('#st-cdl').value.trim().slice(0,40),d=$('#st-cdd').value;if(!isDate(d))return toast('Elige la fecha');S.meta.countdown={label:l,date:d};save('meta');render();closeSettings();toast('Fecha guardada');return}
   if(id==='st-areas'){const an={};document.querySelectorAll('#st-areas [data-area]').forEach(i=>{const v=i.value.trim().slice(0,24);if(v)an[i.dataset.area]=v});S.meta.areaNames=an;save('meta');render();toast('Nombres guardados');return}
   if(id==='st-import'){const f=$('#st-file').files&&$('#st-file').files[0];if(f){if(f.size>3e6)return toast('El archivo es demasiado grande');importData(await f.text());return}const t=$('#st-imp').value.trim();if(!t)return toast('Pega tus datos o elige un archivo');importData(t);return}
@@ -1173,15 +1641,17 @@ async function deleteAccount(btn){
     const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error('sin sesión');
     const r=await fetch(SB_URL+'/functions/v1/borrar-cuenta',{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+session.access_token},body:JSON.stringify({confirmar:'BORRAR'})});
     const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'error');
+    swReg().then(g=>g&&g.pushManager.getSubscription()).then(x=>x&&x.unsubscribe()).catch(()=>{});
     const id=me;manualOut=true;teardown();clearCache(id);
     await sb.auth.signOut({scope:'local'}).catch(()=>{});
     showAuth('entrar','Tu cuenta y todos tus datos fueron borrados.','ok');
   }catch(err){btn.disabled=false;btn.textContent='Borrar mi cuenta';toast(String(err.message||'No se pudo borrar').slice(0,90))}
 }
-function clearCache(id){try{const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('esquina:'+id+':'))ks.push(k)}ks.forEach(k=>localStorage.removeItem(k))}catch(e){}}
+function clearCache(id){try{const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('esquina:'+id+':'))ks.push(k)}ks.forEach(k=>localStorage.removeItem(k));localStorage.removeItem('esquina.coach.'+id)}catch(e){}}
 async function logout(){
   if(dirty.size){await flushAll()}
   if(dirty.size&&!confirm('Hay cambios que todavía no llegan a la nube (estás sin conexión). Si sales ahora, se pierden. ¿Salir igual?'))return;
+  await pushForget();
   const id=me;manualOut=true;teardown();clearCache(id);
   await sb.auth.signOut({scope:'local'}).catch(()=>{});
   showAuth('entrar','Cerraste sesión.','ok');
@@ -1264,12 +1734,13 @@ $('#f-newpw').addEventListener('submit',async e=>{
 
 /* ---------- arranque ---------- */
 let pendingHash='';
-{const h=location.hash||'';if(hashGasto(h)||h==='#despertar')pendingHash=h;
+{const h=location.hash||'';if(hashGasto(h)||h==='#despertar'||h==='#coach')pendingHash=h;
  try{const r=new URLSearchParams(location.search).get('ref');if(r)sessionStorage.setItem('esquina.ref',r.slice(0,40))}catch(e){}}
 function teardown(){
   loadingView=false;ownerReset();
   me=null;email='';S=defaults();dirty.clear();for(const k in timers)clearTimeout(timers[k]);
   disarm();stopRing();ch=null;$('#alarm').hidden=true;$('#sheet').hidden=true;closeSettings();$('#view').innerHTML='';
+  co=null;coS=null;avSig='';pushDev='na';clearTimeout(avT);$('#coach').hidden=true;$('#coach').innerHTML='';lockScroll(false);try{canSpeak&&speechSynthesis.cancel()}catch(e){}
 }
 async function boot(session){
   if(booting||(me&&me===session.user.id))return;booting=true;
@@ -1302,8 +1773,10 @@ async function boot(session){
       if(loadingView){loadingView=false;entering=true;drawTabs();render()}else if(JSON.stringify(S)!==before){drawTabs();render()}
       setSync();
     }
-    if(pendingHash){const h=pendingHash;pendingHash='';clearHash();const g=hashGasto(h);if(g)openQuick(g);else if(h==='#despertar')startChallenge('link')}
+    let coachWait=3000;
+    if(pendingHash){const h=pendingHash;pendingHash='';clearHash();const g=hashGasto(h);if(g)openQuick(g);else if(h==='#despertar')startChallenge('link');else if(h==='#coach')coachWait=400}
     checkOwner();
+    refreshPush();syncAvisosSoon();setTimeout(coachTick,coachWait);
   }finally{booting=false}
 }
 /* Al volver a la app, trae cambios hechos en otro dispositivo */
@@ -1316,9 +1789,9 @@ async function pull(){
   let changed=false;
   for(const r of data||[]){if(!DOCS.includes(r.doc))continue;const c=clean(r.doc,r.data);if(JSON.stringify(c)!==JSON.stringify(S[r.doc])){S[r.doc]=c;cacheWrite(r.doc);changed=true}}
   const typing=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#view form');
-  if(changed&&!typing&&$('#sheet').hidden&&$('#settings').hidden&&$('#alarm').hidden)render();
+  if(changed&&!typing&&$('#sheet').hidden&&$('#settings').hidden&&$('#alarm').hidden&&!co)render();
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pull();if(owner)odRefresh()}else for(const d of [...dirty])flush(d)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pull();if(owner)odRefresh();if(me){setTimeout(coachTick,1200);syncAvisos()}}else for(const d of [...dirty])flush(d)});
 
 sb.auth.onAuthStateChange((ev,session)=>{
   // Se difiere para no llamar a la base de datos dentro del aviso de sesión
