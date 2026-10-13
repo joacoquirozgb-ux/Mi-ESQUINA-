@@ -144,14 +144,14 @@ const dirty=new Set();
 const cacheKey=d=>'esquina:'+me+':'+d;
 function cacheWrite(doc){if(!me)return;try{localStorage.setItem(cacheKey(doc),JSON.stringify({d:S[doc],dirty:dirty.has(doc)}))}catch(e){}}
 function save(doc){
-  if(!me)return;
+  if(!me||(doc==='claude'&&!projOk))return;
   if(locked()){toast.mute=Date.now();if(Date.now()-(toast.at||0)<400)$('#toast').classList.remove('show');blockedSave(doc);return}
   rev[doc]=(rev[doc]||0)+1;dirty.add(doc);cacheWrite(doc);setSync();
   clearTimeout(timers[doc]);timers[doc]=setTimeout(()=>flush(doc),500);
   if(doc==='week'||doc==='habits'||doc==='meta')syncAvisosSoon();
 }
 async function flush(doc){
-  if(!me||!dirty.has(doc)||locked())return;
+  if(!me||!dirty.has(doc)||locked()||(doc==='claude'&&!projOk))return;
   if(writing[doc]){clearTimeout(timers[doc]);timers[doc]=setTimeout(()=>flush(doc),400);return}
   const r=rev[doc],who=me;writing[doc]=true;
   try{
@@ -224,7 +224,11 @@ const ICONS={
 };
 const USER_TABS=[['inicio','Inicio'],['habitos','Hábitos'],['dinero','Dinero'],['claude','Proyectos'],['semana','Semana']];
 const OWNER_TABS=[['d-resumen','Resumen'],['d-usuarios','Usuarios'],['d-mensajes','Mensajes'],['d-cobros','Cobros'],['d-herr','Enlaces'],['d-salir','Mi app']];
-let TABS=USER_TABS;
+/* Proyectos es solo del dueño: a las demás cuentas no se les muestra y el servidor no les deja guardarlo.
+   projOk recuerda en este equipo que la cuenta es del dueño, para no esconderle la pestaña mientras se confirma. */
+let projOk=false;
+const userTabs=()=>projOk?USER_TABS:USER_TABS.filter(t=>t[0]!=='claude');
+let TABS=userTabs();
 const TITLES={inicio:['Mi','Esquina'],habitos:['Tus','Hábitos'],dinero:['Tu','Plata'],claude:['Tus','Proyectos'],semana:['Tu','Semana'],
   'd-resumen':['Panel del','Dueño'],'d-usuarios':['Tu','Gente'],'d-mensajes':['Tus','Mensajes'],'d-cobros':['Tus','Cobros'],'d-herr':['Tus','Herramientas']};
 let tab='inicio', moneyMonth=monthKey(today()), txType='gasto';
@@ -236,6 +240,7 @@ function drawTabs(){
 let slideDir='';
 function go(t){
   if(t==='d-salir')return ownerMode&&leaveOwner();
+  if(t==='claude'&&!projOk&&!ownerMode)return;
   if(t===tab){window.scrollTo({top:0,behavior:RM?'auto':'smooth'});if(ownerMode)odRefresh();return}
   const a=TABS.findIndex(x=>x[0]===tab),b=TABS.findIndex(x=>x[0]===t);slideDir=b>a?'l':'r';
   entering=true;tab=t;drawTabs();render();window.scrollTo(0,0);
@@ -261,6 +266,9 @@ function habitRow(h,k){
     <span class="note">${esc(a.n)}${st?` · racha ${st} ${st===1?'día':'días'}`:''}</span></span>
     <span class="pts">+${+h.pts}</span></button>`;
 }
+function projCards(tm,active){return `
+    <div class="card tint" style="--c:var(--blue)"><h2>Herramientas del mes</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp" data-ck="tools">${clp(tm.total)}</div><div class="note">${S.claude.subs.length?S.claude.subs.length+(S.claude.subs.length===1?' suscripción':' suscripciones')+(tm.apiUsd?' · uso '+usd(tm.apiUsd):''):'Anota tus suscripciones en Proyectos'}</div></div>
+    <div class="card tint" style="--c:var(--a-empresa)"><h2>Proyectos activos</h2><div class="big num" data-count="${active.length}" data-ck="proj">${active.length}</div><div class="note">${active.length?esc(active.slice(0,2).map(p=>p.name).join(', ')):'Ninguno en curso'}</div></div>`}
 function countdownCard(){
   const cd=S.meta.countdown||{};
   if(!isDate(cd.date))return `<div class="card tint" style="--c:var(--a-contenido)"><h2>Tu fecha importante</h2><div class="big muted">—</div><div class="note">Una pelea, un examen, un viaje, un nacimiento.</div><button class="btn sm" type="button" data-settings="cd" style="margin-top:8px">Elegir fecha</button></div>`;
@@ -306,12 +314,11 @@ function vInicio(){
     </div>
   </div>
   <div style="margin-top:12px">${waterCard()}</div>
-  <div class="grid g3" style="margin-top:12px">
+  <div class="grid g3${projOk?'':' n4'}" style="margin-top:12px">
     <div class="card tint" style="--c:var(--red)"><h2>Racha</h2><div class="flame num" data-count="${st}" data-ck="racha">${st}</div><div class="note">${st===1?'día con la mitad o más':'días seguidos con la mitad o más'}</div></div>
     ${countdownCard()}
     <div class="card tint" style="--c:${ing-gas>=0?'var(--ok)':'var(--red)'}"><h2>Saldo del mes</h2><div class="big num" data-count="${ing-gas}" data-kind="clp" data-ck="saldo">${clp(ing-gas)}</div><div class="note">${clp(ing)} entra · ${clp(gas)} sale</div></div>
-    <div class="card tint" style="--c:var(--blue)"><h2>Herramientas del mes</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp" data-ck="tools">${clp(tm.total)}</div><div class="note">${S.claude.subs.length?S.claude.subs.length+(S.claude.subs.length===1?' suscripción':' suscripciones')+(tm.apiUsd?' · uso '+usd(tm.apiUsd):''):'Anota tus suscripciones en Proyectos'}</div></div>
-    <div class="card tint" style="--c:var(--a-empresa)"><h2>Proyectos activos</h2><div class="big num" data-count="${active.length}" data-ck="proj">${active.length}</div><div class="note">${active.length?esc(active.slice(0,2).map(p=>p.name).join(', ')):'Ninguno en curso'}</div></div>
+    ${projOk?projCards(tm,active):''}
     <div class="card tint" style="--c:var(--a-familia)"><h2>Gasto más grande</h2>${topCat(tx)}</div>
   </div>
   ${weekGlance(k)}
@@ -442,6 +449,13 @@ function vDinero(){
   </div>`;
 }
 
+/* Lo que pasa hoy en Mi Esquina, con los mismos números del panel del dueño */
+function esquinaLive(){
+  if(!owner)return '';const r=OD.resumen;
+  if(!r){if(!odErr.resumen)odLoad('resumen');return ''}
+  const v=r.ventas||{},n=x=>+x||0,on=!!(r.cobro&&r.cobro.desde),u=n(r.usuarios&&r.usuarios.total);
+  return `<div class="card pl-card" style="margin-bottom:12px"><div class="pl-row"><div style="min-width:0"><div class="eyebrow">Mi Esquina en vivo</div><div class="pl-ct num">${clp(n(v.mrr))} al mes</div><div class="note">${n(v.activas)} ${n(v.activas)===1?'persona pagando':'personas pagando'} · ${u} ${u===1?'cuenta':'cuentas'}${on?'':' · cobro apagado'}</div></div><button class="btn sm" type="button" data-cobros>Ver cobros</button></div></div>`;
+}
 function vProyectos(){
   const m=monthKey(today());const tm=toolsMonth(m);const C=S.claude;
   const perProj={};C.usage.filter(u=>monthKey(u.date)===m).forEach(u=>perProj[u.proj||'Sin proyecto']=(perProj[u.proj||'Sin proyecto']||0)+(+u.usd||0));
@@ -450,7 +464,7 @@ function vProyectos(){
   const pipeline=C.projects.filter(p=>p.status!=='vendido').reduce((a,p)=>a+(+p.value||0),0);
   const cobrado=C.projects.filter(p=>p.status==='vendido').reduce((a,p)=>a+(+p.value||0),0);
   const usage=[...C.usage].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
-  return `
+  return `${esquinaLive()}
   <div class="grid g3">
     <div class="card tint" style="--c:var(--blue)"><h2>Herramientas · ${MESES[+m.slice(5)-1]}</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp" data-ck="tools">${clp(tm.total)}</div><div class="note">${clp(tm.subs)} fijo${tm.apiUsd?' · '+usd(tm.apiUsd)+' variable':''}</div></div>
     <div class="card tint" style="--c:var(--warn)"><h2>Por cobrar</h2><div class="big num" data-count="${Math.round(pipeline)}" data-kind="clp" data-ck="pipe">${clp(pipeline)}</div><div class="note">en proyectos abiertos</div></div>
@@ -563,6 +577,7 @@ function render(){
   const v=$('#view');
   if(revealIO){revealIO.disconnect();revealIO=null}
   if(loadingView){v.innerHTML='<div class="skel" aria-label="Cargando tus datos"><i></i><i></i><i></i></div>';return}
+  if(!ownerMode&&tab==='claude'&&!projOk){tab='inicio';drawTabs()}
   const V=ownerMode?OVIEWS:VIEWS;v.innerHTML=(V[tab]||Object.values(V)[0])();animateWater();
   requestAnimationFrame(()=>requestAnimationFrame(()=>v.querySelectorAll('.rprog').forEach(c=>c.style.strokeDashoffset=c.dataset.to)));
   const counts=[...v.querySelectorAll('[data-count]')],ck=(el,i)=>tab+':'+(el.dataset.ck||i);
@@ -679,6 +694,7 @@ async function odLoad(k,force){
   odBusy[k]=false;if(who!==me||!owner)return;
   if(res.error){odErr[k]=true}else{OD[k]=res.data;odAt[k]=Date.now()}
   if(k==='resumen')ownerBadges();
+  if(!ownerMode&&tab==='claude'&&k==='resumen')render();
   if(ownerMode&&(OD_NEED[tab]===k||tab==='d-herr'||(tab==='d-cobros'&&k==='resumen'))){if(first&&OD_NEED[tab]===k)entering=true;render()}
 }
 function odRefresh(){if(!ownerMode)return;odLoad('resumen',true);const k=OD_NEED[tab];if(k&&k!=='resumen')odLoad(k,true)}
@@ -687,9 +703,16 @@ function ownerBadges(){
   document.querySelectorAll('[data-owner]').forEach(b=>{b.querySelector('.badge')?.remove();if(n&&!ownerMode)b.insertAdjacentHTML('beforeend',`<span class="badge num">${n}</span>`)});
   if(ownerMode)drawTabs();
 }
+const projKey=()=>'esquina.proy.'+me;
+function projHint(){try{projOk=localStorage.getItem(projKey())==='1'}catch(e){projOk=false}TABS=userTabs()}
 async function checkOwner(){
   const who=me;const {data,error}=await sb.rpc('es_dueno');if(who!==me)return;
   owner=!error&&data===true;document.body.classList.toggle('is-owner',owner);
+  if(!error){
+    if(projOk!==owner){projOk=owner;try{owner?localStorage.setItem(projKey(),'1'):localStorage.removeItem(projKey())}catch(e){}
+      if(!ownerMode){TABS=userTabs();drawTabs();render()}}
+    if(dirty.has('claude')){if(owner)flush('claude');else{dirty.delete('claude');cacheWrite('claude');setSync()}}
+  }
   if(!owner)return;
   odLoad('resumen');
   let back=false;try{back=sessionStorage.getItem('esquina.dueno')==='1'}catch(e){}
@@ -702,13 +725,13 @@ function enterOwner(quiet){
   drawTabs();render();window.scrollTo(0,0);ownerBadges();odRefresh();if(!quiet)toast('Panel del dueño');
 }
 function leaveOwner(){
-  ownerMode=false;TABS=USER_TABS;tab='inicio';slideDir='r';entering=true;
+  ownerMode=false;TABS=userTabs();tab='inicio';slideDir='r';entering=true;
   document.body.classList.remove('owner');try{sessionStorage.removeItem('esquina.dueno')}catch(e){}
   try{const t=localStorage.getItem('esquina.tab');if(VIEWS[t])tab=t}catch(e){}
   drawTabs();render();window.scrollTo(0,0);ownerBadges();
 }
 function ownerReset(){
-  owner=false;ownerMode=false;TABS=USER_TABS;odUser=null;odQ='';odFil='pend';
+  owner=false;ownerMode=false;projOk=false;TABS=userTabs();odUser=null;odQ='';odFil='pend';
   for(const o of [OD,odBusy,odErr,odAt])for(const k in o)delete o[k];
   document.body.classList.remove('owner','is-owner');
   const s=$('#od-sheet');if(s){s.hidden=true;$('#od-body').innerHTML=''}
@@ -746,7 +769,7 @@ function vOResumen(){
   <div class="sec"><div class="sec-h"><h3>Lo que más les cuesta</h3></div>
     <div class="card">${P?odBars(r.dolor||{},DOLOR,['var(--a-deporte)','var(--a-empresa)','var(--blue)','var(--a-contenido)','var(--muted)'],P):'<div class="empty">Sin respuestas todavía.</div>'}</div></div>
   <div class="sec"><div class="sec-h"><h3>Qué usan</h3><span class="note">Personas que ya anotaron algo</span></div>
-    <div class="card">${[['habitos','Hábitos','var(--red)'],['agua','Agua','var(--water)'],['despertar','Despertador','var(--a-contenido)'],['dinero','Dinero','var(--ok)'],['proyectos','Proyectos','var(--a-empresa)'],['semana','Semana','var(--blue)']].map(([k,n,c])=>{const v=+uso[k]||0,p=N?Math.round(v/N*100):0;
+    <div class="card">${[['habitos','Hábitos','var(--red)'],['agua','Agua','var(--water)'],['despertar','Despertador','var(--a-contenido)'],['dinero','Dinero','var(--ok)'],['semana','Semana','var(--blue)']].map(([k,n,c])=>{const v=+uso[k]||0,p=N?Math.round(v/N*100):0;
       return `<div class="od-bar"><div class="od-bl"><b><span class="dot" style="background:${c}"></span>${n}</b><span class="num muted">${v} de ${N}</span></div><div class="bar"><i style="width:${p}%;background:${c}"></i></div></div>`}).join('')}
       <div class="note">Solo cuentas personas. Lo que cada una anota es privado y no se muestra.</div></div></div>
   <div class="sec"><div class="sec-h"><h3>Cotiza al Toque</h3><span class="note">Mismo servidor, otra app</span></div>
@@ -972,6 +995,7 @@ document.addEventListener('click',e=>{
   if(ds.tab)return go(ds.tab);
   if(ds.go)return go(ds.go);
   if(ds.settings!==undefined){openSettings(ds.settings);return}
+  if(ds.cobros!==undefined){if(owner){enterOwner(true);go('d-cobros')}return}
   if(ds.planes!==undefined){if(!$('#settings').hidden)closeSettings();openPlans();return}
   if(ds.payCheck!==undefined){t.disabled=true;payCheck(true).finally(()=>{t.disabled=false});return}
   if(ds.onb!==undefined){S.meta.onboarded=true;save('meta');render();return}
@@ -1711,7 +1735,7 @@ function plansHTML(view){
     ${opt('anual',`<span class="pl-badge">Más conveniente</span><span class="pl-n">Anual</span><span class="pl-p"><b class="disp num">${clp(pr.anual)}</b> al año</span><span class="pl-s">Equivale a ${clp(Math.round(pr.anual/12))} al mes${ahorro>0?' · ahorras '+clp(ahorro):''}</span><span class="pl-s">Un solo pago con débito, crédito o saldo de Mercado Pago</span>`)}
     ${mensualOff?'':opt('mensual',`${fund?`<span class="pl-badge gold">Precio fundador</span>`:''}<span class="pl-n">Mensual</span><span class="pl-p"><b class="disp num">${clp(pr.mensual)}</b> al mes${fund?` <s class="num">${clp(pr.normal)}</s>`:''}</span><span class="pl-s">${fund?'Tu cuenta está entre las primeras 100: mantienes este precio mientras sigas suscrito.':'Se renueva solo cada mes.'}</span><span class="pl-s">Se cobra solo cada mes con tarjeta de crédito · cancelas cuando quieras</span>`)}
   </div>
-  <ul class="pl-inc">${['Instructor con voz y avisos con la app cerrada','Hábitos, agua y despertador con cinturones','Tu plata, tus proyectos y tu semana','Tus datos en todos tus equipos'].map(x=>`<li>${ICON_CHECK}<span>${x}</span></li>`).join('')}</ul>
+  <ul class="pl-inc">${['Instructor con voz y avisos con la app cerrada','Hábitos, agua y despertador con cinturones','Tu plata y tu semana','Tus datos en todos tus equipos'].map(x=>`<li>${ICON_CHECK}<span>${x}</span></li>`).join('')}</ul>
   <button class="btn red pl-go" type="button" data-pl-go>Pagar ${clp(planSel==='mensual'&&!mensualOff?pr.mensual:pr.anual)} con Mercado Pago</button>
   <div class="note pl-fine">Pagas en Mercado Pago: Mi Esquina nunca ve tu tarjeta. Precios en pesos chilenos con IVA incluido. <a href="privacidad.html#planes" target="_blank" rel="noopener">Condiciones</a></div>
   ${p.cobro?`<button class="btn sm pl-chk" type="button" data-pl-check>Ya pagué: revisar</button>`:''}`;
@@ -2015,7 +2039,7 @@ function teardown(){
 async function boot(session){
   if(booting||(me&&me===session.user.id))return;booting=true;
   try{
-    teardown();me=session.user.id;email=session.user.email||'';plCache();
+    teardown();me=session.user.id;email=session.user.email||'';plCache();projHint();
     const metaName=str(obj(session.user.user_metadata).nombre,40);
     // 1) lo que hay en este dispositivo, para mostrar algo al instante
     let had=false;
