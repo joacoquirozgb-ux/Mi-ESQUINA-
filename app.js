@@ -63,7 +63,7 @@ function beltFor(xp){
 const DOCS=['habits','money','claude','week','meta'];
 const TONES={suave:'Suave',firme:'Firme',sargento:'Sargento'};
 const WATER_EVERY=[30,45,60,90,120];
-const coachDef=()=>({on:true,voice:true,tone:'firme',water:{every:60,from:'08:00',to:'22:00'},habitsAt:'21:00',push:false,intro:false,since:0});
+const coachDef=()=>({on:true,voice:true,voz:'h',tone:'firme',water:{every:60,from:'08:00',to:'22:00'},habitsAt:'21:00',push:false,intro:false,since:0});
 function defaults(){
   return {
     habits:{list:[
@@ -130,7 +130,7 @@ function clean(doc,v){
     let countdown={label:str(cd.label,40),date:isDate(cd.date)?cd.date:''};
     if(!countdown.date&&isDate(v.baby))countdown={label:'Bebé',date:v.baby}; // datos traídos de la versión anterior
     const co=obj(v.coach),cw=obj(co.water),wf=isHM(cw.from)?cw.from:'08:00';
-    const coach={on:co.on!==false,voice:co.voice!==false,tone:TONES[co.tone]?co.tone:'firme',
+    const coach={on:co.on!==false,voice:co.voice!==false,voz:co.voz==='m'?'m':'h',tone:TONES[co.tone]?co.tone:'firme',
       water:{every:WATER_EVERY.includes(+cw.every)?+cw.every:60,from:wf,to:isHM(cw.to)&&cw.to>wf?cw.to:'22:00'},
       habitsAt:isHM(co.habitsAt)?co.habitsAt:'21:00',push:!!co.push,intro:!!co.intro,since:Math.max(0,nn(co.since))};
     return {name:str(v.name,40),tab:VIEWS[v.tab]?v.tab:'inicio',alarm:{time:isHM(a.time)?a.time:'06:30',ex:['flexiones','sentadillas','alternar'].includes(a.ex)?a.ex:'flexiones'},countdown,areaNames:an,onboarded:!!v.onboarded,mig2L:true,coach};
@@ -416,7 +416,7 @@ function vDinero(){
   </div>
   <div class="sec">
     <div class="sec-h"><h3>A dónde va tu plata</h3></div>
-    <div class="card">${cats.length?cats.map(([c,v],ci)=>{const bud=S.money.budgets[c];const over=bud&&v>bud;const col=over?'var(--red)':CAT_COL[ci%CAT_COL.length];return `<div style="display:grid;gap:6px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:${col}"></span>${esc(c)}</b><span class="num ${over?'':'muted'}" style="${over?'color:var(--red);font-weight:700':''}">${clp(v)}${bud?' / '+clp(bud):''} · ${Math.round(v/G*100)}%</span></div><div class="bar"><i style="width:${bud?Math.min(100,v/bud*100):v/max*100}%;background:${col}"></i></div></div>`}).join(''):'<div class="empty">Aún no hay gastos este mes. Anota el primero arriba y aquí verás en qué se va tu plata.</div>'}
+    <div class="card">${cats.length?cats.map(([c,v],ci)=>{const bud=S.money.budgets[c];const over=bud&&v>bud;const col=over?'var(--red)':CAT_COL[ci%CAT_COL.length];return `<div style="display:grid;gap:6px;margin-bottom:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:${col}"></span>${esc(c)}</b><span class="num ${over?'':'muted'}" style="${over?'color:var(--red);font-weight:700':''}">${bud?clp(v)+' de '+clp(bud):clp(v)+' · '+Math.round(v/G*100)+'% del gasto'}</span></div><div class="bar"><i style="width:${bud?Math.min(100,v/bud*100):v/max*100}%;background:${col}"></i></div>${bud?`<div class="note num" style="${over?'color:var(--red);font-weight:700':''}">${over?'Te pasaste por '+clp(v-bud):'Quedan '+clp(bud-v)+' del tope'}</div>`:''}</div>`}).join(''):'<div class="empty">Aún no hay gastos este mes. Anota el primero arriba y aquí verás en qué se va tu plata.</div>'}
     ${tm.total?`<div class="note">Además, tus herramientas este mes: ${clp(tm.total)}. Si las pagas tú, anótalas como gasto en "Trabajo y negocio".</div>`:''}
     </div>
   </div>
@@ -1244,7 +1244,7 @@ const ICON_NO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
    {G} meta en litros, {c} cantidad, {y} cumplidos, {m} minutos, {b} resumen del día */
 const FR={
   suave:{
-    intro:['Hola, {n}. Soy tu instructor. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a cuidar con el agua.'],
+    intro:['Hola, {n}. Soy tu {i}. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a cuidar con el agua.'],
     start:['{n}, ya es hora de {t}. Tú puedes.','Llegó el momento de {t}. Partamos con calma, pero partamos.'],
     late:['{n}, tu bloque de {t} empezó a las {h}. Todavía estás a tiempo.'],
     go:['Muy bien. Disfrútalo.','Así me gusta. Vamos.'],
@@ -1265,7 +1265,7 @@ const FR={
     brief:['Buenos días, {n}. Hoy tienes {b}. Vamos paso a paso.']
   },
   firme:{
-    intro:['{n}, desde hoy soy tu instructor. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a obligar a tomar agua. Si no cumples, te reto.'],
+    intro:['{n}, desde hoy soy tu {i}. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a obligar a tomar agua. Si no cumples, te reto.'],
     start:['{n}, son las {h}. Toca {t}. Deja lo que estás haciendo y anda.','Lo planificaste tú: {t}, ahora. Sin excusas.','Hora de {t}, {n}. La disciplina se nota cuando no tienes ganas.'],
     late:['{n}, tu bloque de {t} empezó a las {h}. Vas tarde. Muévete.','Ya deberías estar en {t}. ¿Qué haces mirando el celular?'],
     go:['Eso. A las {e} me rindes cuentas.','Bien. Te pregunto cómo te fue cuando termine.'],
@@ -1316,7 +1316,7 @@ const PT={
 function fill(s,o){
   const n=firstName()||(CO().tone==='sargento'?'soldado':'');
   if(!n)s=s.replace(/¡\{n\}! /g,'¡Oye! ').replace(/\{n\}, /g,'').replace(/, \{n\}/g,'');
-  s=s.replace(/\{(\w)\}/g,(m,k)=>k==='n'?n:o&&o[k]!=null?String(o[k]):'');
+  s=s.replace(/\{(\w)\}/g,(m,k)=>k==='n'?n:k==='i'?INS():o&&o[k]!=null?String(o[k]):'');
   return s.replace(/(^|[.!?] )([¡¿]?)(\p{Ll})/gu,(m,a,b,c)=>a+b+c.toUpperCase());
 }
 function fr(key,o){const c=CO(),bank=FR[c.tone]||FR.firme,list=bank[key]||FR.firme[key]||[''];return fill(list[Math.floor(Math.random()*list.length)],o)}
@@ -1324,24 +1324,57 @@ function fr(key,o){const c=CO(),bank=FR[c.tone]||FR.firme,list=bank[key]||FR.fir
 /* Voz del teléfono: prefiere una voz en español de Chile o Latinoamérica */
 const canSpeak='speechSynthesis' in window;
 let voiceUnlocked=false;
-function pickVoice(){
-  try{const vs=speechSynthesis.getVoices()||[],L=v=>(v.lang||'').replace('_','-').toLowerCase(),good=/google|natural|premium|enhanced|siri|paulina|m[oó]nica|jorge|diego|sabina|helena/i;
-    for(const p of ['es-cl','es-419','es-us','es-mx','es-ar','es-co','es-es','es']){const x=vs.find(v=>L(v).startsWith(p)&&good.test(v.name))||vs.find(v=>L(v).startsWith(p));if(x)return x}}catch(e){}
-  return null;
+/* Voces: el navegador no dice si una voz es de hombre o de mujer, así que se reconoce por el nombre
+   (iPhone: Juan, Jorge, Diego, Eddy, Reed, Rocko · Mónica, Paulina, Francisca…; Windows: Pablo, Raúl · Helena, Laura;
+   Android y Chrome suelen traer solo "Google español", que es de mujer). Si el teléfono no tiene voz de ese tipo,
+   se usa la mejor que haya con el tono más grave o más agudo. La voz exacta elegida se guarda en este equipo. */
+const INS=()=>CO().voz==='m'?'instructora':'instructor';
+const VOZ_M=/female|mujer|m[oó]nica|paulina|marisol|ang[eé]lica|francisca|isabela|soledad|esperanza|helena|laura|sabina|elvira|dalia|elena|luc[ií]a|lupe|pen[eé]lope|conchita|\bm[ií]a\b|paloma|camila|valentina|ximena|catalina|salom[eé]|elsa|sof[ií]a|carmen|marta|gabriela|teresa|\bflo\b|sandy|shelley|grandma|abuela|google espa/i;
+const VOZ_H=/\bmale\b|hombre|jorge|juan|diego|carlos|enrique|pablo|ra[uú]l|[aá]lvaro|miguel|andr[eé]s|tom[aá]s|gonzalo|alonso|lorenzo|jos[eé]|antonio|federico|eddy|reed|rocko|grandpa|abuelo|alberto|rodrigo|mateo|lucas/i;
+const VOZ_RARA=/eddy|\bflo\b|reed|rocko|sandy|shelley|grandma|grandpa|bells|bubbles|jester|organ|whisper|zarvox|trinoids|cellos|bahh|boing|albert|bad news|good news|wobble/i;
+const VOZ_PAIS={'es-cl':'Chile','es-mx':'México','es-es':'España','es-ar':'Argentina','es-us':'EE. UU.','es-co':'Colombia','es-419':'Latinoamérica','es-pe':'Perú','es-uy':'Uruguay','es-ve':'Venezuela'};
+const vozKey=g=>'esquina.voz.'+g;
+function voces(){
+  let vs=[];try{vs=speechSynthesis.getVoices()||[]}catch(e){}
+  const ord=['es-cl','es-419','es-us','es-mx','es-ar','es-co','es-pe','es-uy','es-ve','es-es','es'];
+  return vs.map(v=>{const l=(v.lang||'').replace('_','-').toLowerCase();if(!l.startsWith('es'))return null;const n=v.name||'';
+      const g=VOZ_M.test(n)?'m':VOZ_H.test(n)?'h':'',i=ord.findIndex(x=>l.startsWith(x));
+      return {v,g,l,score:(i<0?ord.length:i)+(VOZ_RARA.test(n)?20:0)-(/premium|enhanced|mejorad|natural|neural|siri/i.test(n)?6:0)}})
+    .filter(Boolean).sort((a,b)=>a.score-b.score);
 }
-function say(t){
-  if(!canSpeak||!CO().voice||!t||Date.now()-(toast.mute||0)<500)return;
+function vozNombre(x){
+  if(!x)return '';let n=x.v.name.replace(/^(microsoft|apple)\s+/i,'').replace(/\s*[-–(].*$/,'').trim()||x.v.name;
+  if(/^google\b/i.test(n))n='Voz de Google';
+  const p=VOZ_PAIS[x.l]||VOZ_PAIS[x.l.slice(0,5)]||'';return n+(p?' · '+p:'');
+}
+/* La voz que va a usar el instructor para ese tipo (hombre o mujer) y cuánto hay que mover el tono */
+function pickVoice(g){
+  g=g==='m'?'m':'h';const all=voces();if(!all.length)return {x:null,shift:g==='m'?1.15:.75,real:false};
+  let fav='';try{fav=localStorage.getItem(vozKey(g))||''}catch(e){}
+  const f=fav&&all.find(x=>x.v.name===fav);
+  const x=f||all.find(x=>x.g===g)||all.find(x=>!x.g)||all[0];
+  const real=x.g===g;
+  return {x,shift:real?1:x.g?(g==='h'?.62:1.32):(g==='h'?.8:1.15),real};
+}
+function speak(t,g,btn){
   try{const sp=speechSynthesis;sp.cancel();
-    const u=new SpeechSynthesisUtterance(String(t).replace(/[^\p{L}\p{N}\p{P}\s]/gu,'').slice(0,320)),v=pickVoice(),tn=CO().tone;
-    if(v){u.voice=v;u.lang=v.lang}else u.lang='es-CL';
-    u.rate=tn==='sargento'?1.1:tn==='suave'?.96:1.03;u.pitch=tn==='sargento'?.8:tn==='suave'?1.08:.95;
-    const b=document.querySelectorAll('.co-say');b.forEach(x=>x.classList.add('talking'));u.onend=u.onerror=()=>b.forEach(x=>x.classList.remove('talking'));
+    const c=CO(),gen=g||c.voz,tn=c.tone,pk=pickVoice(gen);
+    const u=new SpeechSynthesisUtterance(String(t).replace(/[^\p{L}\p{N}\p{P}\s]/gu,'').slice(0,320));
+    if(pk.x){u.voice=pk.x.v;u.lang=pk.x.v.lang}else u.lang='es-CL';
+    const base=gen==='m'?{sargento:.94,suave:1.06,firme:1}:{sargento:.84,suave:1,firme:.94};
+    u.rate=tn==='sargento'?1.1:tn==='suave'?.96:1.03;u.pitch=Math.max(.1,Math.min(2,(base[tn]||1)*pk.shift));
+    const b=[...document.querySelectorAll('.co-say')];if(btn)b.push(btn);b.forEach(x=>x.classList.add('talking'));u.onend=u.onerror=()=>b.forEach(x=>x.classList.remove('talking'));
     sp.speak(u);
   }catch(e){}
 }
+function say(t){
+  if(!canSpeak||!CO().voice||!t||Date.now()-(toast.mute||0)<500)return;
+  speak(t);
+}
+const vozMuestra=g=>fill('Hola, {n}. Soy tu '+(g==='m'?'instructora':'instructor')+'. Vamos a cumplir lo que planificaste.');
 /* En iPhone la voz y el sonido solo se activan después de un toque */
 document.addEventListener('pointerdown',()=>{if(voiceUnlocked||!canSpeak)return;voiceUnlocked=true;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}},{passive:true,capture:true});
-if(canSpeak)try{speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{})}catch(e){}
+if(canSpeak)try{speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const el=$('#co-voz');if(el)el.outerHTML=vozPicker()})}catch(e){}
 function whistle(){
   const a=actx;if(!a||a.state!=='running')return;const t=a.currentTime;
   const o=a.createOscillator(),g=a.createGain(),l=a.createOscillator(),lg=a.createGain();
@@ -1443,11 +1476,11 @@ let pushDev='na';
 function coachCard(){
   if(!premium())return ''; // sin plan el instructor descansa; la tarjeta del plan lo explica
   const c=CO();
-  if(!c.on)return `<div class="card co-card off"><div class="co-head"><span class="co-av">${ICON_WHISTLE}</span><div style="flex:1;min-width:0"><div class="eyebrow">Tu instructor</div><div class="co-line">Está apagado. Nadie te va a exigir nada.</div></div></div><div class="co-btns"><button class="btn pri" type="button" data-co-on>Encender</button></div></div>`;
+  if(!c.on)return `<div class="card co-card off"><div class="co-head"><span class="co-av">${ICON_WHISTLE}</span><div style="flex:1;min-width:0"><div class="eyebrow">Tu ${INS()}</div><div class="co-line">Está apagado. Nadie te va a exigir nada.</div></div></div><div class="co-btns"><button class="btn pri" type="button" data-co-on>Encender</button></div></div>`;
   const k=today(),nowHM=hm(new Date()),tb=dayBlocks(k),ok=tb.filter(b=>planDone(k,b.id)===1).length,wi=waterInfo(),hn=H().list.length,hd=H().list.filter(h=>doneOn(k)[h.id]).length;
   const next=tb.find(b=>b.start>nowHM);
   const push=pushDev==='off'?`<button class="btn pri" type="button" data-co-push>Activar avisos</button>`:pushDev==='ios'?`<button class="btn pri" type="button" data-settings="coach">Avisos en iPhone</button>`:'';
-  return `<div class="card co-card" style="margin-bottom:12px"><div class="co-head"><span class="co-av">${ICON_WHISTLE}</span><div style="flex:1;min-width:0"><div class="eyebrow">Tu instructor · ${TONES[c.tone]}</div><div class="co-line">${esc(coachLine())}</div></div><button class="co-say" type="button" data-co-say aria-label="Escuchar al instructor">${ICON_SPEAK}</button></div>
+  return `<div class="card co-card" style="margin-bottom:12px"><div class="co-head"><span class="co-av">${ICON_WHISTLE}</span><div style="flex:1;min-width:0"><div class="eyebrow">Tu ${INS()} · ${TONES[c.tone]}</div><div class="co-line">${esc(coachLine())}</div></div><button class="co-say" type="button" data-co-say aria-label="Escuchar al instructor">${ICON_SPEAK}</button></div>
   <div class="co-stats"><div><b class="num">${ok}/${tb.length}</b><span>planes</span></div><div><b class="num">${wi.w}/${wi.W}</b><span>vasos</span></div><div><b class="num">${hd}/${hn}</b><span>hábitos</span></div></div>
   ${next?`<div class="note">Próximo: <b>${esc(next.title)}</b> a las ${next.start}</div>`:''}
   <div class="co-btns">${push}<button class="btn" type="button" data-settings="coach">Ajustar</button></div></div>`;
@@ -1462,11 +1495,15 @@ function drawCoach(){
     big=co.mood==='win'?'¡Eso!':co.mood==='fail'?'Mal.':'Ojo.';
     acts=`<button class="btn red" type="button" data-co="close">${c.tone==='sargento'?'¡Entendido!':'Entendido'}</button>`;
   }else if(kind==='intro'){
-    label='Preséntate';big='Tu instructor';
-    body=`<div class="co-tones">${Object.entries({suave:'Te recuerda con cariño.',firme:'Te exige y te reta si fallas.',sargento:'Te grita. Sin piedad.'}).map(([t,d])=>`<button type="button" data-co="tone" data-v="${t}" class="${c.tone===t?'on':''}" aria-pressed="${c.tone===t}"><b>${TONES[t]}</b><span>${d}</span></button>`).join('')}</div>
+    label='Preséntate';big='Tu '+INS();
+    const vz=k=>{const pk=canSpeak?pickVoice(k):null;return pk&&pk.real?vozNombre(pk.x):'Voz de '+(k==='m'?'mujer':'hombre')};
+    body=`<div class="co-q">¿Quién te entrena?</div>
+      <div class="co-tones co-two">${[['h','Hombre'],['m','Mujer']].map(([k,n])=>`<button type="button" data-co="voz" data-v="${k}" class="${c.voz===k?'on':''}" aria-pressed="${c.voz===k}"><b>${n}</b><span>${esc(vz(k))}</span></button>`).join('')}</div>
+      <div class="co-q">¿Cómo te habla?</div>
+      <div class="co-tones">${Object.entries({suave:'Te recuerda con cariño.',firme:'Te exige y te reta si fallas.',sargento:'Te grita. Sin piedad.'}).map(([t,d])=>`<button type="button" data-co="tone" data-v="${t}" class="${c.tone===t?'on':''}" aria-pressed="${c.tone===t}"><b>${TONES[t]}</b><span>${d}</span></button>`).join('')}</div>
       ${S.week.blocks.length?'':'<div class="co-note">Todavía no tienes nada planificado. Arma tu semana en la pestaña Semana y yo me encargo de que la cumplas.</div>'}`;
     acts=(pushDev==='off'?`<button class="btn" type="button" data-co="push">Avisarme también con la app cerrada</button>`:'')+`<button class="btn red" type="button" data-co="introok">Empezar</button>`;
-    foot='Puedes cambiar el tono, el agua y la hora de los hábitos en Ajustes.';
+    foot='Puedes cambiar la voz, el tono, el agua y la hora de los hábitos en Ajustes.';
   }else if(kind==='start'){
     const b=co.b,a=AREAS[b.area]||AREAS.salud;label=co.late?'Vas tarde':'Hora de cumplir';big=esc(b.title);sub=`${b.start}–${b.end} · ${esc(a.n)}`;
     if(ph==='confirm')acts=`<button class="btn red" type="button" data-co="go">Tienes razón, voy</button><button class="btn" type="button" data-co="skipok">Sí, hoy no lo hago</button>`;
@@ -1495,7 +1532,7 @@ function drawCoach(){
     acts=`<button class="btn red" type="button" data-co="close">${c.tone==='sargento'?'¡A darle!':'Vamos'}</button>`;
   }
   el.innerHTML=`<div class="co-in">
-    <div class="co-top"><span class="co-av">${ICON_WHISTLE}</span><div class="co-who"><div class="eyebrow">Tu instructor · ${TONES[c.tone]}</div><b>${esc(label)}</b></div><button class="co-say" type="button" data-co="say" aria-label="Escuchar de nuevo">${ICON_SPEAK}</button></div>
+    <div class="co-top"><span class="co-av">${ICON_WHISTLE}</span><div class="co-who"><div class="eyebrow">Tu ${INS()} · ${TONES[c.tone]}</div><b>${esc(label)}</b></div><button class="co-say" type="button" data-co="say" aria-label="Escuchar de nuevo">${ICON_SPEAK}</button></div>
     ${big?`<div class="co-big">${big}</div>`:''}${sub?`<div class="co-sub num">${sub}</div>`:''}
     <p class="co-msg">${esc(co.msg)}</p>
     ${body}
@@ -1511,8 +1548,9 @@ $('#coach').addEventListener('click',async e=>{
   if(a==='close'){if(co.kind==='brief'){s.seen.br=1;csSave()}return coachClose()}
   if(co.kind==='intro'){
     if(a==='tone'){c.tone=b.dataset.v;save('meta');co.msg=fr('intro');drawCoach();say(co.msg);return}
+    if(a==='voz'){c.voz=b.dataset.v==='m'?'m':'h';save('meta');co.msg=fr('intro');drawCoach();say(co.msg);return}
     if(a==='push'){b.disabled=true;await pushEnable();if(co)drawCoach();return}
-    if(a==='introok'){c.intro=true;c.since=now;save('meta');s.seen.br=1;s.lastPrompt=now;csSave();toast(c.tone==='sargento'?'¡A la orden!':'Tu instructor está activo');return coachClose()}
+    if(a==='introok'){c.intro=true;c.since=now;save('meta');s.seen.br=1;s.lastPrompt=now;csSave();toast(c.tone==='sargento'?'¡A la orden!':'Tu '+INS()+' está activo');return coachClose()}
   }
   if(co.kind==='start'){const id=co.b.id;
     if(a==='go'){s.seen['st:'+id]=1;csSave();const m=fr('go',{e:co.b.end});toast(m);say(m);return coachClose()}
@@ -1633,7 +1671,7 @@ async function pushTest(btn){
   if(!CO().push||pushDev!=='on')return toast('Primero activa los avisos en este dispositivo');
   if(Date.now()-lastTest<30000)return toast('Espera un poco antes de probar otra vez');
   lastTest=Date.now();btn.disabled=true;
-  const {error}=await sb.from('avisos').insert({at:new Date(Date.now()+3000).toISOString(),titulo:'Prueba del instructor',cuerpo:'Si ves esto, te puedo avisar aunque la app esté cerrada.',tag:'prueba',url:'app.html#coach'});
+  const {error}=await sb.from('avisos').insert({at:new Date(Date.now()+3000).toISOString(),titulo:'Prueba de tu '+INS(),cuerpo:'Si ves esto, te puedo avisar aunque la app esté cerrada.',tag:'prueba',url:'app.html#coach'});
   btn.disabled=false;toast(error?'No se pudo mandar la prueba':'Te llega en menos de un minuto. Puedes cerrar la app.');
 }
 setInterval(()=>{if(me&&document.visibilityState==='visible')syncAvisos()},10*6e4);
@@ -1853,12 +1891,29 @@ function openSettings(focus){
   if(focus==='datos')setTimeout(()=>{const el=$('#set-datos');if(el)el.scrollIntoView({block:'start'})},60);
   drawPushRow();
 }
+/* Hombre o mujer, con la voz que va a sonar en este equipo; tocar una la prueba */
+function vozPicker(){
+  const c=CO(),g=c.voz,all=voces();
+  const card=([k,n])=>{const pk=pickVoice(k),sub=pk.x?(pk.real?vozNombre(pk.x):'Voz '+(k==='h'?'grave':'aguda')+' simulada'):'Voz del teléfono';
+    return `<button type="button" role="radio" aria-checked="${g===k}" class="${g===k?'on':''}" data-vz="${k}"><span class="vz-ic">${ICON_SPEAK}</span><b>${n}</b><span class="s">${esc(sub)}</span></button>`};
+  const same=all.filter(x=>x.g===g),rest=all.filter(x=>x.g!==g);
+  let fav='';try{fav=localStorage.getItem(vozKey(g))||''}catch(e){}
+  const opt=x=>`<option value="${esc(x.v.name)}" ${x.v.name===fav?'selected':''}>${esc(vozNombre(x))}</option>`;
+  const sel=all.length>1?`<label>Voz exacta en este equipo<select id="co-vname"><option value="">Automática</option>${same.length?`<optgroup label="${g==='m'?'Mujer':'Hombre'}">${same.map(opt).join('')}</optgroup>`:''}${rest.length?`<optgroup label="Otras voces">${rest.map(opt).join('')}</optgroup>`:''}</select></label>`:'';
+  const hint=all.length&&!same.length?`<div class="note">Este equipo no trae una voz de ${g==='m'?'mujer':'hombre'} en español, así que uso la que hay con un tono más ${g==='m'?'agudo':'grave'}. Puedes descargar más voces en los ajustes de voz del teléfono (en iPhone: Ajustes › Accesibilidad › Contenido leído › Voces).</div>`:'';
+  return `<div id="co-voz" class="vz-wrap"><div class="vz" role="radiogroup" aria-label="Voz">${[['h','Hombre'],['m','Mujer']].map(card).join('')}</div>${sel}${hint}</div>`;
+}
+function vozElegida(){
+  const c=CO(),el=$('#co-voz');if(el)el.outerHTML=vozPicker();const h=$('#set-coach h4');if(h)h.textContent='Tu '+INS();
+  audio();speak(vozMuestra(c.voz),c.voz,$('#co-voz [data-vz="'+c.voz+'"]'));
+}
 function coachSettings(){
   const c=CO(),w=c.water;
-  return `<div class="set-sec" id="set-coach"><h4>Tu instructor</h4>
+  return `<div class="set-sec" id="set-coach"><h4>Tu ${INS()}</h4>
     <div class="note">Te recuerda lo que planificaste, te pide cuentas, te obliga a tomar agua y a cerrar tus hábitos. Su pantalla no se cierra hasta que respondes.</div>
+    ${canSpeak?vozPicker():''}
     <form class="row" id="st-coach">
-      <label class="inl"><input type="checkbox" id="co-on" ${c.on?'checked':''}> Instructor encendido</label>
+      <label class="inl"><input type="checkbox" id="co-on" ${c.on?'checked':''}> ${c.voz==='m'?'Instructora encendida':'Instructor encendido'}</label>
       <label class="inl"><input type="checkbox" id="co-voice" ${c.voice?'checked':''} ${canSpeak?'':'disabled'}> Que me hable en voz alta</label>
       <label>Tono<select id="co-tone">${Object.entries(TONES).map(([k,n])=>`<option value="${k}" ${c.tone===k?'selected':''}>${n}</option>`).join('')}</select></label>
       <label>Agua cada<select id="co-every">${WATER_EVERY.map(m=>`<option value="${m}" ${w.every===m?'selected':''}>${m<60?m+' min':m===60?'1 hora':(m/60).toLocaleString('es-CL')+' horas'}</option>`).join('')}</select></label>
@@ -1898,6 +1953,7 @@ $('#settings').addEventListener('click',async e=>{
   const b=e.target.closest('button');if(!b)return;const ds=b.dataset;
   if(ds.closeSet!==undefined)return closeSettings();
   if(ds.ownerOpen!==undefined){closeSettings();enterOwner();return}
+  if(ds.vz){const c=CO();c.voz=ds.vz==='m'?'m':'h';save('meta');vozElegida();render();return}
   if(ds.coTry!==undefined){audio();say(fr('start',{t:'tu primer bloque',h:hm(new Date())}));return}
   if(ds.pushOn!==undefined){b.disabled=true;await pushEnable();drawPushRow();render();return}
   if(ds.pushOff!==undefined){b.disabled=true;await pushDisable();drawPushRow();render();return}
@@ -1908,6 +1964,11 @@ $('#settings').addEventListener('click',async e=>{
   if(ds.export!==undefined){const blob=new Blob([JSON.stringify(exportJSON(),null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mi-esquina-'+today()+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}
   if(ds.logout!==undefined){await logout();return}
 });
+$('#settings').addEventListener('change',e=>{
+  if(e.target.id!=='co-vname')return;const g=CO().voz;
+  try{e.target.value?localStorage.setItem(vozKey(g),e.target.value):localStorage.removeItem(vozKey(g))}catch(err){}
+  vozElegida();
+});
 $('#settings').addEventListener('submit',async e=>{
   e.preventDefault();const id=e.target.id;
   if(id==='st-name'){const n=$('#st-n').value.trim().slice(0,40);if(!n)return toast('Escribe tu nombre');S.meta.name=n;save('meta');render();toast('Nombre guardado');
@@ -1917,7 +1978,7 @@ $('#settings').addEventListener('submit',async e=>{
     const wasOn=c.on;c.on=$('#co-on').checked;c.voice=$('#co-voice').checked;c.tone=TONES[$('#co-tone').value]?$('#co-tone').value:'firme';
     c.water={every:WATER_EVERY.includes(+$('#co-every').value)?+$('#co-every').value:60,from:f,to:t};c.habitsAt=h;
     if(c.on&&!wasOn){c.since=Date.now()}
-    save('meta');render();syncAvisos(true);toast(c.on?(c.tone==='sargento'?'¡Entendido!':'Instructor guardado'):'Instructor apagado');
+    save('meta');render();syncAvisos(true);toast(c.on?(c.tone==='sargento'?'¡Entendido!':'Ajustes guardados'):(c.voz==='m'?'Instructora apagada':'Instructor apagado'));
     if(c.on)say(c.tone==='sargento'?'¡Cambios guardados, soldado!':'Listo. Así quedamos.');return}
   if(id==='st-cd'){const l=$('#st-cdl').value.trim().slice(0,40),d=$('#st-cdd').value;if(!isDate(d))return toast('Elige la fecha');S.meta.countdown={label:l,date:d};save('meta');render();closeSettings();toast('Fecha guardada');return}
   if(id==='st-areas'){const an={};document.querySelectorAll('#st-areas [data-area]').forEach(i=>{const v=i.value.trim().slice(0,24);if(v)an[i.dataset.area]=v});S.meta.areaNames=an;save('meta');render();toast('Nombres guardados');return}

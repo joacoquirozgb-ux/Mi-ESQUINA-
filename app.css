@@ -153,7 +153,7 @@ label,form.row>*{min-width:0}
 input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--muted) 75%,transparent)}
 textarea{min-height:96px;resize:vertical}
 form.row{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));align-items:end}
-form.row label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:700}
+form.row label,.vz-wrap label{display:grid;gap:5px;font-size:12px;color:var(--muted);font-weight:700}
 .seg{display:inline-flex;background:var(--sunk);border-radius:12px;padding:3px;gap:2px;position:relative}
 .seg button{border:0;background:none;padding:7px 13px;border-radius:9px;font-weight:700;cursor:pointer;color:var(--muted);transition:color .25s,background .25s,box-shadow .25s;position:relative;z-index:1}
 .seg button.on{background:var(--raise);color:var(--fg);box-shadow:0 2px 6px rgba(0,0,0,.12)}
@@ -530,6 +530,25 @@ label.inl input{width:auto}
 .cb-url code{flex:1;min-width:0;font-size:12.5px;overflow-wrap:anywhere}
 .cb-form{grid-template-columns:1fr auto}
 @media (prefers-reduced-motion: reduce){.pl-ok-ic,.pl-bar>i{animation:none}.pl-spin{animation-duration:3s}}
+
+/* Voz del instructor: hombre o mujer, con la voz real que suena en este equipo */
+.vz-wrap{display:grid;gap:10px}
+.vz{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.vz button{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;row-gap:1px;align-items:center;text-align:left;padding:12px 14px;min-height:64px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;cursor:pointer;transition:border-color .2s,background .2s,transform .2s var(--spring)}
+.vz button:active{transform:scale(.97)}
+.vz button:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.vz button.on{border-color:var(--red);background:var(--surface);background:color-mix(in srgb,var(--red) 7%,var(--surface))}
+.vz-ic{grid-row:1/3;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--sunk);color:var(--muted);transition:background .2s,color .2s}
+.vz-ic svg{width:20px;height:20px}
+.vz button.on .vz-ic{background:var(--red);color:#fff}
+.vz b{font-size:16px;line-height:1.2;align-self:end}
+.vz .s{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;align-self:start}
+.vz button.talking .w1{animation:cowave .9s ease-in-out infinite}
+.vz button.talking .w2{animation:cowave .9s .2s ease-in-out infinite}
+.co-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.co-q{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:rgba(244,245,248,.62);margin-top:2px}
+.set-sec form.row label.inl{grid-column:1/-1}
+@media (prefers-reduced-motion:reduce){.vz button.talking .w1,.vz button.talking .w2{animation:none}}
 
 /* Despertador a pantalla completa */
 .overlay{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));gap:14px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
