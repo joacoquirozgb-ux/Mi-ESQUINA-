@@ -533,6 +533,7 @@ label.inl input{width:auto}
 
 /* Voz del instructor: hombre o mujer, con la voz real que suena en este equipo */
 .vz-wrap{display:grid;gap:10px}
+.vz-motor{display:flex;width:100%}.vz-motor button{flex:1;padding:9px 10px}
 .vz{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .vz button{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;row-gap:1px;align-items:center;text-align:left;padding:12px 14px;min-height:64px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;cursor:pointer;transition:border-color .2s,background .2s,transform .2s var(--spring)}
 .vz button:active{transform:scale(.97)}

@@ -63,7 +63,7 @@ function beltFor(xp){
 const DOCS=['habits','money','claude','week','meta'];
 const TONES={suave:'Suave',firme:'Firme',sargento:'Sargento'};
 const WATER_EVERY=[30,45,60,90,120];
-const coachDef=()=>({on:true,voice:true,voz:'h',tone:'firme',water:{every:60,from:'08:00',to:'22:00'},habitsAt:'21:00',push:false,intro:false,since:0});
+const coachDef=()=>({on:true,voice:true,voz:'h',motor:'nat',tone:'firme',water:{every:60,from:'08:00',to:'22:00'},habitsAt:'21:00',push:false,intro:false,since:0});
 function defaults(){
   return {
     habits:{list:[
@@ -130,7 +130,7 @@ function clean(doc,v){
     let countdown={label:str(cd.label,40),date:isDate(cd.date)?cd.date:''};
     if(!countdown.date&&isDate(v.baby))countdown={label:'Bebé',date:v.baby}; // datos traídos de la versión anterior
     const co=obj(v.coach),cw=obj(co.water),wf=isHM(cw.from)?cw.from:'08:00';
-    const coach={on:co.on!==false,voice:co.voice!==false,voz:co.voz==='m'?'m':'h',tone:TONES[co.tone]?co.tone:'firme',
+    const coach={on:co.on!==false,voice:co.voice!==false,voz:co.voz==='m'?'m':'h',motor:co.motor==='tel'?'tel':'nat',tone:TONES[co.tone]?co.tone:'firme',
       water:{every:WATER_EVERY.includes(+cw.every)?+cw.every:60,from:wf,to:isHM(cw.to)&&cw.to>wf?cw.to:'22:00'},
       habitsAt:isHM(co.habitsAt)?co.habitsAt:'21:00',push:!!co.push,intro:!!co.intro,since:Math.max(0,nn(co.since))};
     return {name:str(v.name,40),tab:VIEWS[v.tab]?v.tab:'inicio',alarm:{time:isHM(a.time)?a.time:'06:30',ex:['flexiones','sentadillas','alternar'].includes(a.ex)?a.ex:'flexiones'},countdown,areaNames:an,onboarded:!!v.onboarded,mig2L:true,coach};
@@ -1134,7 +1134,7 @@ function exFor(k){const a=AL();if(a.ex!=='alternar')return a.ex;const [y,m,d]=k.
 function exHow(ex){return ex==='flexiones'
   ?'Deja el teléfono en el suelo, bajo tu cara. Toca la pantalla con la nariz o el mentón cada vez que bajes.'
   :'Deja el teléfono en una silla a tu lado. Toca la pantalla con la mano cada vez que llegues abajo.'}
-function audio(){try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){}return actx}
+function audio(){try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state!=='running')actx.resume().catch(()=>{})}catch(e){}return actx}
 function beepOnce(vol){const a=actx;if(!a||a.state!=='running')return;const t=a.currentTime;
   [0,.18].forEach(dt=>{const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=dt?1175:880;g.gain.setValueAtTime(0,t+dt);g.gain.linearRampToValueAtTime(vol,t+dt+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dt+.15);o.connect(g).connect(a.destination);o.start(t+dt);o.stop(t+dt+.16)})}
 function startRing(){stopRing();const tick=()=>{const done=ch?(ch.count||0):0;beepOnce(.22*(1-done/10*.75));try{navigator.vibrate&&navigator.vibrate(300)}catch(e){}};tick();beepT=setInterval(tick,1000)}
@@ -1262,7 +1262,10 @@ const FR={
     snooze:['Te vuelvo a avisar en {m} minutos.'],
     nosnooze:['Ya lo dejaste para después. Ahora sí, hazlo.'],
     skipq:['¿Seguro? Lo planificaste tú. Toca otra vez si de verdad no lo vas a hacer.'],
-    brief:['Buenos días, {n}. Hoy tienes {b}. Vamos paso a paso.']
+    brief:['Buenos días, {n}. Hoy tienes {b}. Vamos paso a paso.'],
+    owe:['Me debes {c} {r}. Cuéntame cómo te fue.'],behind:['Vas atrasado con el agua: {w} de {e} vasos a esta hora.'],habpend:['Son más de las {h} y te faltan {c} {r}.'],
+    allok:['Cumpliste todo lo planificado hoy. Así me gusta.'],noweek:['Arma tu semana en Semana y yo me encargo de que la cumplas.'],fine:['Vas bien. Sigue a tu ritmo.'],
+    bienvenida:['¡Bienvenido al equipo! Ahora sí, a cumplir.'],guardado:['Listo. Así quedamos.'],muestra:['Hola, {n}. Soy tu {i}. Vamos a cumplir lo que planificaste.']
   },
   firme:{
     intro:['{n}, desde hoy soy tu {i}. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a obligar a tomar agua. Si no cumples, te reto.'],
@@ -1283,7 +1286,10 @@ const FR={
     snooze:['Te doy {m} minutos. Ni uno más.'],
     nosnooze:['Ya lo postergaste. Se acabaron las excusas.'],
     skipq:['¿En serio? Lo planificaste tú. Toca otra vez si de verdad no lo vas a hacer.'],
-    brief:['Buenos días, {n}. Hoy tienes {b}. Tu meta de agua es {G}. A trabajar.']
+    brief:['Buenos días, {n}. Hoy tienes {b}. Tu meta de agua es {G}. A trabajar.'],
+    owe:['Me debes {c} {r}. Rinde cuentas.'],behind:['Vas atrasado con el agua: {w} de {e} vasos a esta hora.'],habpend:['Son más de las {h} y te faltan {c} {r}.'],
+    allok:['Cumpliste todo lo planificado hoy. Así me gusta.'],noweek:['Arma tu semana en Semana y yo me encargo de que la cumplas.'],fine:['Vas bien. No aflojes.'],
+    bienvenida:['¡Bienvenido al equipo! Ahora sí, a cumplir.'],guardado:['Listo. Así quedamos.'],muestra:['Hola, {n}. Soy tu {i}. Vamos a cumplir lo que planificaste.']
   },
   sargento:{
     intro:['¡{n}! ¡Desde hoy mando yo! ¡Vas a cumplir lo que planifiques, vas a tomar agua y vas a cerrar tus hábitos! ¿Entendido?'],
@@ -1304,7 +1310,10 @@ const FR={
     snooze:['¡{m} minutos! ¡Ni uno más!'],
     nosnooze:['¡Se acabaron las excusas! ¡Hazlo ya!'],
     skipq:['¿Me estás diciendo que no? ¡Toca otra vez si te atreves!'],
-    brief:['¡Buenos días, {n}! ¡Hoy tienes {b}! ¡Meta de agua: {G}! ¡A darle!']
+    brief:['¡Buenos días, {n}! ¡Hoy tienes {b}! ¡Meta de agua: {G}! ¡A darle!'],
+    owe:['¡Me debes {c} {r}! ¡Rinde cuentas!'],behind:['¡Vas atrasado con el agua! ¡{w} de {e} vasos!'],habpend:['¡Son más de las {h} y te faltan {c} {r}!'],
+    allok:['¡Cumpliste todo lo planificado hoy! ¡Así me gusta!'],noweek:['¡Arma tu semana en Semana y yo me encargo de que la cumplas!'],fine:['¡Vas bien, pero no aflojes!'],
+    bienvenida:['¡Bienvenido al equipo, soldado! ¡Ahora sí, a cumplir!'],guardado:['¡Cambios guardados, soldado!'],muestra:['¡Hola, {n}! ¡Soy tu {i}! ¡Vamos a cumplir lo que planificaste!']
   }
 };
 /* Títulos cortos para los avisos con la app cerrada */
@@ -1313,13 +1322,97 @@ const PT={
   firme:{water:'Agua. Ahora.',wbody:'Para todo y toma un vaso. Tu meta de hoy: {G}.',check:'¿Cumpliste {t}?',again:'Me debes una respuesta: {t}',habits:'Te faltan hábitos',last:'Último aviso: tus hábitos',brief:'Tu día'},
   sargento:{water:'¡Agua, soldado!',wbody:'¡Un vaso, ahora! ¡Meta de hoy: {G}!',check:'¡Rinde cuentas: {t}!',again:'¡Todavía no respondes: {t}!',habits:'¡Hábitos pendientes!',last:'¡Último aviso!',brief:'¡Arriba!'}
 };
+/* Voz natural: lo que el instructor dice en voz alta, grabado con una voz neuronal de hombre y otra de mujer (voz/v1/h y voz/v1/m).
+   Mismo orden que FR, pero sin datos que cambian (horas, vasos, nombres de bloques): esos quedan en pantalla.
+   {n} marca dónde va el nombre, que se dice aparte si está grabado; {i} es instructor o instructora; {m} solo vale 10 o 30.
+   Para grabar de nuevo: herramientas/voz/LEEME.md. */
+const VB={
+  suave:{
+    intro:['Hola{n}. Soy tu {i}. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a cuidar con el agua.'],
+    start:['{n}Ya es hora de tu bloque. Tú puedes.','Llegó el momento. Partamos con calma, pero partamos.'],
+    late:['{n}Tu bloque ya empezó. Todavía estás a tiempo.'],
+    go:['Muy bien. Disfrútalo.','Así me gusta. Vamos.'],
+    check:['¿Cómo te fue con tu bloque? Sé honesto contigo.','Terminó tu bloque. ¿Lo hiciste?'],
+    checks:['Tienes bloques sin contarme cómo te fue. Vamos uno por uno.'],
+    yes:['¡Bien hecho{n}! Cumpliste tu palabra.','Lo lograste. Así se construye una vida ordenada.'],
+    no:['Está bien, mañana lo intentamos de nuevo. Pero que no pase dos veces seguidas.','No pasa nada si es una vez. Mañana lo recuperas.'],
+    mixed:['Cumpliste una parte. Vas bien, mañana por todos.'],
+    water:['{n}Toma un vaso de agua.','Hora de hidratarte. Un vaso y sigues.'],
+    waterok:['Muy bien. Tu cuerpo te lo agradece.','Eso. Después te recuerdo el próximo.'],
+    waterdone:['¡Meta de agua cumplida{n}! Qué bien te cuidaste hoy.'],
+    habits:['Te faltan hábitos de hoy. Todavía hay tiempo.','{n}Revisemos tus hábitos antes de que termine el día.'],
+    habitsok:['Todos tus hábitos listos. Día cumplido{n}.'],
+    habitsno:['Está bien. Mañana empezamos de nuevo, con todo.'],
+    snooze:['Te vuelvo a avisar en {m} minutos.'],
+    nosnooze:['Ya lo dejaste para después. Ahora sí, hazlo.'],
+    skipq:['¿Seguro? Lo planificaste tú. Toca otra vez si de verdad no lo vas a hacer.'],
+    brief:['Buenos días{n}. Hoy tienes un plan. Vamos paso a paso.'],
+    owe:['Tienes bloques sin contarme cómo te fue.'],behind:['Vas atrasado con el agua. Toma un vaso.'],habpend:['Ya es tarde y te faltan hábitos de hoy.'],
+    allok:['Cumpliste todo lo planificado hoy. Así me gusta.'],noweek:['Arma tu semana en Semana y yo me encargo de que la cumplas.'],fine:['Vas bien. Sigue a tu ritmo.'],
+    bienvenida:['¡Bienvenido al equipo! Ahora sí, a cumplir.'],guardado:['Listo. Así quedamos.'],muestra:['Hola{n}. Soy tu {i}. Vamos a cumplir lo que planificaste.']
+  },
+  firme:{
+    intro:['{n}Desde hoy soy tu {i}. Te voy a recordar lo que planificas, te voy a pedir cuentas y te voy a obligar a tomar agua. Si no cumples, te reto.'],
+    start:['{n}Llegó la hora de tu bloque. Deja lo que estás haciendo y anda.','Lo planificaste tú. Ahora. Sin excusas.','Hora de cumplir{n}. La disciplina se nota cuando no tienes ganas.'],
+    late:['{n}Tu bloque ya empezó. Vas tarde. Muévete.','Ya deberías estar en tu bloque. ¿Qué haces mirando el celular?'],
+    go:['Eso. Cuando termine, me rindes cuentas.','Bien. Te pregunto cómo te fue cuando termine.'],
+    check:['{n}Rinde cuentas. ¿Cumpliste tu bloque?','Se terminó tu bloque. ¿Lo hiciste o no? Sin mentiras.'],
+    checks:['{n}Tienes bloques sin rendir cuentas. Uno por uno.'],
+    yes:['Eso{n}. Cumpliste lo que dijiste.','Bien ahí. Así se gana el round.','Palabra cumplida. Así me gusta.'],
+    no:['Mal{n}. Lo planificaste y no lo hiciste. Mañana no quiero excusas.','No cumpliste. Mañana lo haces sí o sí.','Te fallaste a ti mismo{n}. Mañana lo cumples.'],
+    mixed:['Cumpliste solo una parte. No está mal, pero tampoco está bien. Mañana todos.'],
+    water:['{n}Para todo y toma agua.','Agua{n}. Ahora. No es opcional.','Vas atrasado con el agua. Un vaso, ya.'],
+    waterok:['Eso. El próximo te lo pido más rato.','Bien. No me hagas recordártelo de nuevo.'],
+    waterdone:['Meta de agua cumplida{n}. Así se hace.'],
+    habits:['Te faltan hábitos. El día no ha terminado.','{n}Todavía no cumples con todo. Márcalos o anda a hacerlos.'],
+    habitsok:['Todos los hábitos listos. Día ganado{n}.'],
+    habitsno:['Hoy no cumpliste todo{n}. Mañana no te lo voy a perdonar.'],
+    snooze:['Te doy {m} minutos. Ni uno más.'],
+    nosnooze:['Ya lo postergaste. Se acabaron las excusas.'],
+    skipq:['¿En serio? Lo planificaste tú. Toca otra vez si de verdad no lo vas a hacer.'],
+    brief:['Buenos días{n}. Hoy tienes un plan y una meta de agua. A trabajar.'],
+    owe:['Me debes respuestas. Rinde cuentas.'],behind:['Vas atrasado con el agua. Un vaso, ya.'],habpend:['Ya es tarde y te faltan hábitos. Ciérralos hoy.'],
+    allok:['Cumpliste todo lo planificado hoy. Así me gusta.'],noweek:['Arma tu semana en Semana y yo me encargo de que la cumplas.'],fine:['Vas bien. No aflojes.'],
+    bienvenida:['¡Bienvenido al equipo! Ahora sí, a cumplir.'],guardado:['Listo. Así quedamos.'],muestra:['Hola{n}. Soy tu {i}. Vamos a cumplir lo que planificaste.']
+  },
+  sargento:{
+    intro:['{n}¡Desde hoy mando yo! ¡Vas a cumplir lo que planifiques, vas a tomar agua y vas a cerrar tus hábitos! ¿Entendido?'],
+    start:['{n}¡Es la hora! ¡A tu bloque, ahora! ¡Muévete!','¡Arriba{n}! ¡Lo planificaste tú! ¡Ya!','¡Se acabó el descanso! ¡A cumplir, soldado!'],
+    late:['{n}¡Tu bloque ya empezó! ¿Qué haces mirando el celular?'],
+    go:['¡Eso! ¡Cuando termine me rindes cuentas!'],
+    check:['{n}¡Rinde cuentas! ¿Cumpliste, sí o no?'],
+    checks:['{n}¡Tienes bloques sin rendir cuentas! ¡Uno por uno, ahora!'],
+    yes:['¡Eso{n}! ¡Así se hace!','¡Cumpliste! ¡Eso es tener palabra, soldado!'],
+    no:['¿Cómo que no? ¡Lo planificaste tú{n}! ¡Mañana lo haces el doble de bien!','¡Inaceptable! ¡Los campeones no se saltan lo que planifican!'],
+    mixed:['¡Eso no alcanza! ¡Mañana los quiero todos!'],
+    water:['{n}¡Agua! ¡Ahora mismo!','¡Deja todo y toma agua, soldado! ¡Ya!'],
+    waterok:['¡Eso! ¡Más rato te quiero ver con otro!'],
+    waterdone:['¡Meta de agua cumplida! ¡Así me gusta{n}!'],
+    habits:['{n}¡Te faltan hábitos! ¡El día no termina hasta que cumplas!'],
+    habitsok:['¡Todos listos! ¡Así se cierra un día, soldado!'],
+    habitsno:['¡Día perdido{n}! ¡Mañana no hay perdón!'],
+    snooze:['¡{m} minutos! ¡Ni uno más!'],
+    nosnooze:['¡Se acabaron las excusas! ¡Hazlo ya!'],
+    skipq:['¿Me estás diciendo que no? ¡Toca otra vez si te atreves!'],
+    brief:['¡Buenos días{n}! ¡Hoy hay plan! ¡A darle!'],
+    owe:['¡Me debes respuestas! ¡Rinde cuentas!'],behind:['¡Vas atrasado con el agua! ¡Un vaso, ya!'],habpend:['¡Te faltan hábitos y ya es tarde! ¡Ciérralos!'],
+    allok:['¡Cumpliste todo lo planificado hoy! ¡Así me gusta!'],noweek:['¡Arma tu semana en Semana y yo me encargo de que la cumplas!'],fine:['¡Vas bien, pero no aflojes!'],
+    bienvenida:['¡Bienvenido al equipo, soldado! ¡Ahora sí, a cumplir!'],guardado:['¡Cambios guardados, soldado!'],muestra:['¡Hola{n}! ¡Soy tu {i}! ¡Vamos a cumplir lo que planificaste!']
+  }
+};
+const VB_MIN=[10,30];
+/* Nombres grabados. Si el tuyo no está, la voz natural no lo dice (en pantalla sí aparece). */
+const vozSlug=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+const VB_NOM=new Set(('Abigail Adriana Agustina Aída Alejandra Alicia Alondra Amanda Amelia Ana Andrea Ángela Anita Antonella Antonia Aurora Beatriz Belén Bárbara Blanca Camila Carla Carmen Carolina Catalina Cecilia Claudia Constanza Cristina Daniela Débora Denisse Diana Dominga Elena Elisa Elizabeth Emilia Emma Erika Esperanza Estefanía Fabiola Fernanda Florencia Francisca Gabriela Gloria Graciela Helena Ignacia Inés Irene Isabel Isabella Isidora Ivonne Jacqueline Javiera Jessica Josefa Josefina Juana Julia Julieta Karen Karina Katherine Laura Leonor Leticia Lidia Lorena Lucía Luisa Luz Magdalena Maite Marcela Margarita María Mariana Maribel Marisol Marta Martina Matilda Mercedes Mónica Natalia Nicole Olga Olivia Pamela Patricia Paula Paulina Pilar Priscila Rafaela Raquel Rocío Rosa Rosario Sandra Sara Silvia Sofía Soledad Susana Tamara Teresa Trinidad Valentina Valeria Verónica Victoria Violeta Viviana Ximena Yasna Yolanda Zoe '+
+  'Agustín Alberto Alejandro Alexis Alfredo Alonso Álvaro Andrés Ángel Antonio Ariel Arturo Bastián Benjamín Bernardo Camilo Carlos César Claudio Cristián Cristóbal Daniel Darío David Diego Eduardo Elías Emilio Enrique Esteban Eugenio Fabián Felipe Fernando Francisco Gabriel Gaspar Gerardo Germán Gonzalo Guillermo Gustavo Héctor Hernán Hugo Ignacio Iván Jaime Javier Joaquín Jorge José Juan Julián Julio León Leonardo Lucas Luciano Luis Manuel Marcelo Marco Marcos Mario Martín Mateo Matías Mauricio Maximiliano Miguel Nelson Nicolás Óscar Pablo Patricio Pedro Rafael Ramón Raúl Renato Ricardo Roberto Rodrigo Rubén Samuel Santiago Sebastián Sergio Simón Tomás Vicente Víctor Waldo '+
+  'Joaco Nico Seba Benja Mati Nacho Pancho Pato Gabo Tomi Feli Cata Coni Fran Javi Vale Maca Pili Isi Dani Caro Clau Sofi Anto Fer soldado').split(' ').map(vozSlug));
 function fill(s,o){
   const n=firstName()||(CO().tone==='sargento'?'soldado':'');
   if(!n)s=s.replace(/¡\{n\}! /g,'¡Oye! ').replace(/\{n\}, /g,'').replace(/, \{n\}/g,'');
   s=s.replace(/\{(\w)\}/g,(m,k)=>k==='n'?n:k==='i'?INS():o&&o[k]!=null?String(o[k]):'');
   return s.replace(/(^|[.!?] )([¡¿]?)(\p{Ll})/gu,(m,a,b,c)=>a+b+c.toUpperCase());
 }
-function fr(key,o){const c=CO(),bank=FR[c.tone]||FR.firme,list=bank[key]||FR.firme[key]||[''];return fill(list[Math.floor(Math.random()*list.length)],o)}
+function fr(key,o){const c=CO(),t=FR[c.tone]?c.tone:'firme',list=FR[t][key]||FR.firme[key]||[''],i=Math.floor(Math.random()*list.length),s=fill(list[i],o);vozMarca(s,t,key,i,o);return s}
 
 /* Voz del teléfono: prefiere una voz en español de Chile o Latinoamérica */
 const canSpeak='speechSynthesis' in window;
@@ -1357,7 +1450,8 @@ function pickVoice(g){
   return {x,shift:real?1:x.g?(g==='h'?.62:1.32):(g==='h'?.8:1.15),real};
 }
 function speak(t,g,btn){
-  try{const sp=speechSynthesis;sp.cancel();
+  vozCalla();if(!canSpeak)return;
+  try{const sp=speechSynthesis;
     const c=CO(),gen=g||c.voz,tn=c.tone,pk=pickVoice(gen);
     const u=new SpeechSynthesisUtterance(String(t).replace(/[^\p{L}\p{N}\p{P}\s]/gu,'').slice(0,320));
     if(pk.x){u.voice=pk.x.v;u.lang=pk.x.v.lang}else u.lang='es-CL';
@@ -1367,13 +1461,73 @@ function speak(t,g,btn){
     sp.speak(u);
   }catch(e){}
 }
-function say(t){
-  if(!canSpeak||!CO().voice||!t||Date.now()-(toast.mute||0)<500)return;
-  speak(t);
+/* Voz natural: toca las frases grabadas en voz/v1/<h|m>/. Si no cargan (sin internet la primera vez, o un navegador viejo),
+   habla la voz del teléfono con el texto completo. */
+const VOZ_DIR='voz/v1/'; // si se graba de nuevo, otra carpeta (ver herramientas/voz/LEEME.md)
+const canNat=!!(window.AudioContext||window.webkitAudioContext)&&'fetch' in window;
+const natOn=()=>canNat&&CO().motor!=='tel';
+const vozDicho=new Map(); // texto en pantalla → frase grabada que le corresponde
+function vozMarca(s,tono,clave,i,o){vozDicho.delete(s);vozDicho.set(s,{tono,clave,i,m:o&&o.m});if(vozDicho.size>40)vozDicho.delete(vozDicho.keys().next().value)}
+function vozUrls(x,g){
+  const tpl=((VB[x.tono]||VB.firme)[x.clave]||VB.firme[x.clave]||[])[x.i];if(tpl==null)return null;
+  let id=x.tono+'.'+x.clave+'.'+x.i;
+  if(tpl.includes('{m}')){if(!VB_MIN.includes(+x.m))return null;id+='-'+x.m}
+  const u=k=>VOZ_DIR+g+'/'+k+'.mp3',p=tpl.indexOf('{n}');if(p<0)return [u(id)];
+  const n=vozSlug(firstName())||(x.tono==='sargento'?'soldado':'');if(!n||!VB_NOM.has(n))return [u(id)];
+  const nu=u((x.tono==='sargento'?'nx/':'n/')+n);
+  return p===0?[nu,u(id)]:tpl.slice(p+3).replace(/[.!?\s]/g,'')?[u(id+'.a'),nu,u(id+'.b')]:[u(id),nu];
 }
-const vozMuestra=g=>fill('Hola, {n}. Soy tu '+(g==='m'?'instructora':'instructor')+'. Vamos a cumplir lo que planificaste.');
+const vozBuf=new Map();
+function vozCarga(u){
+  let p=vozBuf.get(u);
+  if(!p){p=fetch(u).then(r=>{if(!r.ok)throw new Error(r.status);return r.arrayBuffer()}).then(b=>new Promise((ok,ko)=>audio().decodeAudioData(b,ok,ko)));
+    p.catch(()=>vozBuf.delete(u));vozBuf.set(u,p);if(vozBuf.size>30)vozBuf.delete(vozBuf.keys().next().value)}
+  return p;
+}
+let vozSrc=[],vozN=0;
+function vozCalla(){
+  vozN++;vozSrc.forEach(x=>{try{x.onended=null;x.stop()}catch(e){}});vozSrc=[];
+  document.querySelectorAll('.talking').forEach(x=>x.classList.remove('talking'));try{canSpeak&&speechSynthesis.cancel()}catch(e){}
+}
+async function vozToca(urls,btn){
+  const a=audio();if(!a)return false;
+  vozCalla();const n=vozN;let bufs;
+  try{bufs=await Promise.all(urls.map(vozCarga))}catch(e){return n!==vozN}
+  if(n!==vozN)return true; // ya se pidió otra frase
+  if(a.state!=='running')try{await a.resume()}catch(e){}
+  if(a.state!=='running'||n!==vozN)return n!==vozN;
+  const b=[...document.querySelectorAll('.co-say')];if(btn)b.push(btn);b.forEach(x=>x.classList.add('talking'));
+  let t=a.currentTime+.04;
+  bufs.forEach((buf,i)=>{const x=a.createBufferSource();x.buffer=buf;x.connect(a.destination);x.start(t);vozSrc.push(x);t+=buf.duration+(i<bufs.length-1?.07:0)});
+  vozSrc[vozSrc.length-1].onended=()=>{if(n===vozN){vozSrc=[];b.forEach(x=>x.classList.remove('talking'))}};
+  return true;
+}
+/* Dice una frase aunque la voz esté apagada (para las muestras de Ajustes) */
+function vozDi(t,btn){
+  const x=natOn()&&vozDicho.get(t),urls=x&&vozUrls(x,CO().voz);
+  if(urls){vozToca(urls,btn).then(ok=>{if(!ok&&canSpeak)speak(t,null,btn)});return}
+  if(canSpeak)speak(t,null,btn);
+}
+function say(t,btn){
+  if(!(canSpeak||canNat)||!CO().voice||!t||Date.now()-(toast.mute||0)<500)return;
+  vozDi(t,btn);
+}
+/* Deja guardadas en el teléfono las frases del tono y la voz elegidos (menos de 1 MB), para que suenen al tiro y sin internet */
+let vozPre='';
+function vozPrecarga(){
+  const c=CO();if(!me||!natOn()||!c.on||!c.voice)return;
+  const t=VB[c.tone]?c.tone:'firme',g=c.voz,key=VOZ_DIR+g+t+vozSlug(firstName());
+  if(vozPre===key)return;vozPre=key;
+  try{if(localStorage.getItem('esquina.vozpre')===key||(navigator.connection&&navigator.connection.saveData))return}catch(e){}
+  const set=new Set();
+  for(const [clave,lista] of Object.entries(VB[t]))lista.forEach((tpl,i)=>{for(const m of tpl.includes('{m}')?VB_MIN:[null])(vozUrls({tono:t,clave,i,m},g)||[]).forEach(u=>set.add(u))});
+  const list=[...set];let i=0;
+  const next=()=>{if(vozPre!==key)return;if(i>=list.length){try{localStorage.setItem('esquina.vozpre',key)}catch(e){}return}
+    fetch(list[i++]).then(r=>r.ok&&r.arrayBuffer()).catch(()=>{}).then(()=>setTimeout(next,80))};
+  setTimeout(next,4000);
+}
 /* En iPhone la voz y el sonido solo se activan después de un toque */
-document.addEventListener('pointerdown',()=>{if(voiceUnlocked||!canSpeak)return;voiceUnlocked=true;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}},{passive:true,capture:true});
+document.addEventListener('pointerdown',()=>{if(voiceUnlocked)return;voiceUnlocked=true;if(canNat&&me)audio();if(!canSpeak)return;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u)}catch(e){}},{passive:true,capture:true});
 if(canSpeak)try{speechSynthesis.getVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const el=$('#co-voz');if(el)el.outerHTML=vozPicker()})}catch(e){}
 function whistle(){
   const a=actx;if(!a||a.state!=='running')return;const t=a.currentTime;
@@ -1437,7 +1591,7 @@ function coachBlocked(){
     [...document.querySelectorAll('.sheet-bg')].some(x=>!x.hidden)||!!(a&&a.closest&&a.closest('#view')&&a.matches('input,textarea,select'));
 }
 function coachTick(){
-  if(!me||co)return;const c=CO();if(!c.on)return;
+  if(!me||co)return;const c=CO();if(!c.on)return;vozPrecarga();
   const s=CS(),ml=W().log[today()]||0;if(s.ml!=null&&ml>s.ml){s.lastDrink=Date.now();s.n.wa=0}s.ml=ml;csSave();
   if(coachBlocked())return;
   const d=coachDue();if(d)coachShow(d);
@@ -1465,12 +1619,12 @@ function coachClose(){co=null;const el=$('#coach');el.hidden=true;el.innerHTML='
 function coachLine(){
   const c=CO(),k=today(),nowHM=hm(new Date()),tb=dayBlocks(k),owe=owedPlans().length,wi=waterInfo(),hp=H().list.filter(h=>!doneOn(k)[h.id]).length;
   const ok=tb.filter(b=>planDone(k,b.id)===1).length;
-  if(owe)return `Me debes ${owe} ${owe===1?'respuesta':'respuestas'}. Rinde cuentas.`;
-  if(wi.inWin&&wi.ml<wi.goal&&wi.w<wi.e)return `Vas atrasado con el agua: ${wi.w} de ${wi.e} vasos a esta hora.`;
-  if(hp&&nowHM>=c.habitsAt)return `Son más de las ${c.habitsAt} y te faltan ${hp} ${hp===1?'hábito':'hábitos'}.`;
-  if(tb.length&&ok===tb.length)return 'Cumpliste todo lo planificado hoy. Así me gusta.';
-  if(!S.week.blocks.length)return 'Arma tu semana en Semana y yo me encargo de que la cumplas.';
-  return c.tone==='sargento'?'¡Vas bien, pero no aflojes!':c.tone==='suave'?'Vas bien. Sigue a tu ritmo.':'Vas bien. No aflojes.';
+  if(owe)return fr('owe',{c:owe,r:owe===1?'respuesta':'respuestas'});
+  if(wi.inWin&&wi.ml<wi.goal&&wi.w<wi.e)return fr('behind',wi);
+  if(hp&&nowHM>=c.habitsAt)return fr('habpend',{h:c.habitsAt,c:hp,r:hp===1?'hábito':'hábitos'});
+  if(tb.length&&ok===tb.length)return fr('allok');
+  if(!S.week.blocks.length)return fr('noweek');
+  return fr('fine');
 }
 let pushDev='na';
 function coachCard(){
@@ -1496,7 +1650,7 @@ function drawCoach(){
     acts=`<button class="btn red" type="button" data-co="close">${c.tone==='sargento'?'¡Entendido!':'Entendido'}</button>`;
   }else if(kind==='intro'){
     label='Preséntate';big='Tu '+INS();
-    const vz=k=>{const pk=canSpeak?pickVoice(k):null;return pk&&pk.real?vozNombre(pk.x):'Voz de '+(k==='m'?'mujer':'hombre')};
+    const vz=k=>{if(natOn())return 'Voz natural de '+(k==='m'?'mujer':'hombre');const pk=canSpeak?pickVoice(k):null;return pk&&pk.real?vozNombre(pk.x):'Voz de '+(k==='m'?'mujer':'hombre')};
     body=`<div class="co-q">¿Quién te entrena?</div>
       <div class="co-tones co-two">${[['h','Hombre'],['m','Mujer']].map(([k,n])=>`<button type="button" data-co="voz" data-v="${k}" class="${c.voz===k?'on':''}" aria-pressed="${c.voz===k}"><b>${n}</b><span>${esc(vz(k))}</span></button>`).join('')}</div>
       <div class="co-q">¿Cómo te habla?</div>
@@ -1787,7 +1941,7 @@ function openPlans(view){
 function closePlans(){const el=$('#plans');clearInterval(payWait);hideSheet(el,()=>{if(el.hidden)$('#plans-body').innerHTML=''})}
 function showPaid(){
   closeSettings();openPlans('ok');try{FX.rain()}catch(e){}
-  if(CO().voice)say(CO().tone==='sargento'?'¡Bienvenido al equipo, soldado! ¡Ahora sí, a cumplir!':'¡Bienvenido al equipo! Ahora sí, a cumplir.');
+  if(CO().voice)say(fr('bienvenida'));
   render();
 }
 async function payStart(btn){
@@ -1893,28 +2047,31 @@ function openSettings(focus){
 }
 /* Hombre o mujer, con la voz que va a sonar en este equipo; tocar una la prueba */
 function vozPicker(){
-  const c=CO(),g=c.voz,all=voces();
-  const card=([k,n])=>{const pk=pickVoice(k),sub=pk.x?(pk.real?vozNombre(pk.x):'Voz '+(k==='h'?'grave':'aguda')+' simulada'):'Voz del teléfono';
+  const c=CO(),g=c.voz,nat=natOn(),all=nat?[]:voces();
+  const card=([k,n])=>{const pk=nat?null:pickVoice(k),sub=nat?'Voz natural':pk.x?(pk.real?vozNombre(pk.x):'Voz '+(k==='h'?'grave':'aguda')+' simulada'):'Voz del teléfono';
     return `<button type="button" role="radio" aria-checked="${g===k}" class="${g===k?'on':''}" data-vz="${k}"><span class="vz-ic">${ICON_SPEAK}</span><b>${n}</b><span class="s">${esc(sub)}</span></button>`};
   const same=all.filter(x=>x.g===g),rest=all.filter(x=>x.g!==g);
   let fav='';try{fav=localStorage.getItem(vozKey(g))||''}catch(e){}
   const opt=x=>`<option value="${esc(x.v.name)}" ${x.v.name===fav?'selected':''}>${esc(vozNombre(x))}</option>`;
   const sel=all.length>1?`<label>Voz exacta en este equipo<select id="co-vname"><option value="">Automática</option>${same.length?`<optgroup label="${g==='m'?'Mujer':'Hombre'}">${same.map(opt).join('')}</optgroup>`:''}${rest.length?`<optgroup label="Otras voces">${rest.map(opt).join('')}</optgroup>`:''}</select></label>`:'';
   const hint=all.length&&!same.length?`<div class="note">Este equipo no trae una voz de ${g==='m'?'mujer':'hombre'} en español, así que uso la que hay con un tono más ${g==='m'?'agudo':'grave'}. Puedes descargar más voces en los ajustes de voz del teléfono (en iPhone: Ajustes › Accesibilidad › Contenido leído › Voces).</div>`:'';
-  return `<div id="co-voz" class="vz-wrap"><div class="vz" role="radiogroup" aria-label="Voz">${[['h','Hombre'],['m','Mujer']].map(card).join('')}</div>${sel}${hint}</div>`;
+  const motor=canNat&&canSpeak?`<div class="seg vz-motor" role="radiogroup" aria-label="Tipo de voz">${[['nat','Natural'],['tel','Del teléfono']].map(([k,n])=>`<button type="button" role="radio" aria-checked="${(c.motor||'nat')===k}" class="${(c.motor||'nat')===k?'on':''}" data-vmotor="${k}">${n}</button>`).join('')}</div>`:'';
+  const nota=nat?`<div class="note">Grabada con voz humana. Te llama por tu nombre si está en su lista, y las horas y los vasos los ves en pantalla.</div>`:'';
+  return `<div id="co-voz" class="vz-wrap">${motor}<div class="vz" role="radiogroup" aria-label="Voz">${[['h','Hombre'],['m','Mujer']].map(card).join('')}</div>${nota}${sel}${hint}</div>`;
 }
 function vozElegida(){
   const c=CO(),el=$('#co-voz');if(el)el.outerHTML=vozPicker();const h=$('#set-coach h4');if(h)h.textContent='Tu '+INS();
-  audio();speak(vozMuestra(c.voz),c.voz,$('#co-voz [data-vz="'+c.voz+'"]'));
+  const on=$('#co-on');if(on&&on.nextSibling)on.nextSibling.textContent=' '+(c.voz==='m'?'Instructora encendida':'Instructor encendido');
+  audio();vozDi(fr('muestra'),$('#co-voz [data-vz="'+c.voz+'"]'));vozPrecarga();
 }
 function coachSettings(){
   const c=CO(),w=c.water;
   return `<div class="set-sec" id="set-coach"><h4>Tu ${INS()}</h4>
     <div class="note">Te recuerda lo que planificaste, te pide cuentas, te obliga a tomar agua y a cerrar tus hábitos. Su pantalla no se cierra hasta que respondes.</div>
-    ${canSpeak?vozPicker():''}
+    ${canSpeak||canNat?vozPicker():''}
     <form class="row" id="st-coach">
       <label class="inl"><input type="checkbox" id="co-on" ${c.on?'checked':''}> ${c.voz==='m'?'Instructora encendida':'Instructor encendido'}</label>
-      <label class="inl"><input type="checkbox" id="co-voice" ${c.voice?'checked':''} ${canSpeak?'':'disabled'}> Que me hable en voz alta</label>
+      <label class="inl"><input type="checkbox" id="co-voice" ${c.voice?'checked':''} ${canSpeak||canNat?'':'disabled'}> Que me hable en voz alta</label>
       <label>Tono<select id="co-tone">${Object.entries(TONES).map(([k,n])=>`<option value="${k}" ${c.tone===k?'selected':''}>${n}</option>`).join('')}</select></label>
       <label>Agua cada<select id="co-every">${WATER_EVERY.map(m=>`<option value="${m}" ${w.every===m?'selected':''}>${m<60?m+' min':m===60?'1 hora':(m/60).toLocaleString('es-CL')+' horas'}</option>`).join('')}</select></label>
       <label>Agua desde<input id="co-from" type="time" value="${esc(w.from)}" required></label>
@@ -1954,6 +2111,7 @@ $('#settings').addEventListener('click',async e=>{
   if(ds.closeSet!==undefined)return closeSettings();
   if(ds.ownerOpen!==undefined){closeSettings();enterOwner();return}
   if(ds.vz){const c=CO();c.voz=ds.vz==='m'?'m':'h';save('meta');vozElegida();render();return}
+  if(ds.vmotor){const c=CO();c.motor=ds.vmotor==='tel'?'tel':'nat';save('meta');vozElegida();return}
   if(ds.coTry!==undefined){audio();say(fr('start',{t:'tu primer bloque',h:hm(new Date())}));return}
   if(ds.pushOn!==undefined){b.disabled=true;await pushEnable();drawPushRow();render();return}
   if(ds.pushOff!==undefined){b.disabled=true;await pushDisable();drawPushRow();render();return}
@@ -1979,7 +2137,7 @@ $('#settings').addEventListener('submit',async e=>{
     c.water={every:WATER_EVERY.includes(+$('#co-every').value)?+$('#co-every').value:60,from:f,to:t};c.habitsAt=h;
     if(c.on&&!wasOn){c.since=Date.now()}
     save('meta');render();syncAvisos(true);toast(c.on?(c.tone==='sargento'?'¡Entendido!':'Ajustes guardados'):(c.voz==='m'?'Instructora apagada':'Instructor apagado'));
-    if(c.on)say(c.tone==='sargento'?'¡Cambios guardados, soldado!':'Listo. Así quedamos.');return}
+    if(c.on)say(fr('guardado'));vozPrecarga();return}
   if(id==='st-cd'){const l=$('#st-cdl').value.trim().slice(0,40),d=$('#st-cdd').value;if(!isDate(d))return toast('Elige la fecha');S.meta.countdown={label:l,date:d};save('meta');render();closeSettings();toast('Fecha guardada');return}
   if(id==='st-areas'){const an={};document.querySelectorAll('#st-areas [data-area]').forEach(i=>{const v=i.value.trim().slice(0,24);if(v)an[i.dataset.area]=v});S.meta.areaNames=an;save('meta');render();toast('Nombres guardados');return}
   if(id==='st-import'){const f=$('#st-file').files&&$('#st-file').files[0];if(f){if(f.size>3e6)return toast('El archivo es demasiado grande');importData(await f.text());return}const t=$('#st-imp').value.trim();if(!t)return toast('Pega tus datos o elige un archivo');importData(t);return}
