@@ -547,6 +547,29 @@ label.inl input{width:auto}
 .vz button.talking .w1{animation:cowave .9s ease-in-out infinite}
 .vz button.talking .w2{animation:cowave .9s .2s ease-in-out infinite}
 .co-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Tono del instructor en Ajustes: tarjetas como las de la voz */
+.set-sec .tonos{grid-column:1/-1}
+.tonos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tonos button{display:grid;gap:3px;align-content:start;text-align:left;padding:11px 12px;min-height:76px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;cursor:pointer;transition:border-color .2s,background .2s,transform .2s var(--spring)}
+.tonos button:active{transform:scale(.97)}
+.tonos button:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.tonos button.on{border-color:var(--red);background:color-mix(in srgb,var(--red) 7%,var(--surface))}
+.tonos b{font-size:15px}
+.tonos span{font-size:12px;line-height:1.3;color:var(--muted)}
+.tonos button.talking b::after{content:"";display:inline-block;width:6px;height:6px;margin-left:6px;border-radius:50%;background:var(--red);vertical-align:middle;animation:copulse 1s ease-out infinite}
+@media (max-width:360px){.tonos{grid-template-columns:1fr}.tonos button{min-height:0}}
+/* Interruptores en lugar de casillas */
+label.inl{justify-content:space-between;flex-direction:row-reverse}
+label.inl input[type=checkbox]{appearance:none;-webkit-appearance:none;width:48px;height:30px;border-radius:999px;background:var(--sunk);border:1px solid var(--line);position:relative;cursor:pointer;margin:0;transition:background .2s,border-color .2s}
+label.inl input[type=checkbox]::after{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:transform .25s var(--spring)}
+label.inl input[type=checkbox]:checked{background:var(--red);border-color:var(--red)}
+label.inl input[type=checkbox]:checked::after{transform:translateX(18px)}
+label.inl input[type=checkbox]:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+label.inl input[type=checkbox]:disabled{opacity:.45;cursor:default}
+/* Mientras el instructor habla, su avatar late */
+.co-top:has(.co-say.talking) .co-av{animation:cotalk .7s ease-in-out infinite alternate}
+@keyframes cotalk{from{box-shadow:0 0 0 0 color-mix(in srgb,var(--red) 55%,transparent)}to{box-shadow:0 0 0 10px color-mix(in srgb,var(--red) 0%,transparent)}}
+@media (prefers-reduced-motion:reduce){.tonos button.talking b::after,.co-top:has(.co-say.talking) .co-av{animation:none}}
 .co-q{font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:800;color:rgba(244,245,248,.62);margin-top:2px}
 .set-sec form.row label.inl{grid-column:1/-1}
 @media (prefers-reduced-motion:reduce){.vz button.talking .w1,.vz button.talking .w2{animation:none}}

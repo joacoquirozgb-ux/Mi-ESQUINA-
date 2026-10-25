@@ -19,3 +19,19 @@
       set('p-cta','Empezar mis '+d+' días gratis');
     }).catch(()=>{});
 })();
+
+/* Muestra de la voz del instructor: las mismas grabaciones que usa la app */
+(()=>{
+  let a=null,cur=null;
+  const PLAY='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>',PAUSE='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>';
+  const pinta=()=>document.querySelectorAll('[data-voz]').forEach(b=>{const on=b===cur;b.setAttribute('aria-pressed',on);b.querySelector('.ic').innerHTML=on?PAUSE:PLAY});
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('[data-voz]');if(!b)return;
+    if(a){a.pause();a=null}
+    if(cur===b){cur=null;return pinta()}
+    cur=b;pinta();
+    a=new Audio('voz/v1/'+(b.dataset.voz==='m'?'m':'h')+'/firme.intro.0.mp3');
+    a.onended=a.onerror=()=>{if(cur===b){cur=null;pinta()}};
+    a.play().catch(()=>{cur=null;pinta()});
+  });
+})();

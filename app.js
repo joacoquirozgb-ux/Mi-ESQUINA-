@@ -62,6 +62,7 @@ function beltFor(xp){
 /* ---------- estado ---------- */
 const DOCS=['habits','money','claude','week','meta'];
 const TONES={suave:'Suave',firme:'Firme',sargento:'Sargento'};
+const TONO_TXT={suave:'Te recuerda con cariño.',firme:'Te exige y te reta si fallas.',sargento:'Te grita. Sin piedad.'};
 const WATER_EVERY=[30,45,60,90,120];
 const coachDef=()=>({on:true,voice:true,voz:'h',motor:'nat',tone:'firme',water:{every:60,from:'08:00',to:'22:00'},habitsAt:'21:00',push:false,intro:false,since:0});
 function defaults(){
@@ -522,7 +523,7 @@ function vSemana(){
       <label>Desde<input id="b-start" type="time" value="08:00" required></label>
       <label>Hasta<input id="b-end" type="time" value="09:00" required></label>
       <label>Área<select id="b-area">${areaOpts('familia')}</select></label>
-      <label style="display:flex;gap:8px;align-items:center;color:var(--fg)"><input id="b-lock" type="checkbox" style="width:auto"> Protegido</label>
+      <label class="inl"><input id="b-lock" type="checkbox"> Protegido</label>
       <button class="btn pri" type="submit">Agregar</button>
     </form></div>
   </div>`;
@@ -1412,7 +1413,7 @@ function fill(s,o){
   s=s.replace(/\{(\w)\}/g,(m,k)=>k==='n'?n:k==='i'?INS():o&&o[k]!=null?String(o[k]):'');
   return s.replace(/(^|[.!?] )([¡¿]?)(\p{Ll})/gu,(m,a,b,c)=>a+b+c.toUpperCase());
 }
-function fr(key,o){const c=CO(),t=FR[c.tone]?c.tone:'firme',list=FR[t][key]||FR.firme[key]||[''],i=Math.floor(Math.random()*list.length),s=fill(list[i],o);vozMarca(s,t,key,i,o);return s}
+function fr(key,o,tono){const c=CO(),t=FR[tono||c.tone]?tono||c.tone:'firme',list=FR[t][key]||FR.firme[key]||[''],i=Math.floor(Math.random()*list.length),s=fill(list[i],o);vozMarca(s,t,key,i,o);return s}
 
 /* Voz del teléfono: prefiere una voz en español de Chile o Latinoamérica */
 const canSpeak='speechSynthesis' in window;
@@ -1654,7 +1655,7 @@ function drawCoach(){
     body=`<div class="co-q">¿Quién te entrena?</div>
       <div class="co-tones co-two">${[['h','Hombre'],['m','Mujer']].map(([k,n])=>`<button type="button" data-co="voz" data-v="${k}" class="${c.voz===k?'on':''}" aria-pressed="${c.voz===k}"><b>${n}</b><span>${esc(vz(k))}</span></button>`).join('')}</div>
       <div class="co-q">¿Cómo te habla?</div>
-      <div class="co-tones">${Object.entries({suave:'Te recuerda con cariño.',firme:'Te exige y te reta si fallas.',sargento:'Te grita. Sin piedad.'}).map(([t,d])=>`<button type="button" data-co="tone" data-v="${t}" class="${c.tone===t?'on':''}" aria-pressed="${c.tone===t}"><b>${TONES[t]}</b><span>${d}</span></button>`).join('')}</div>
+      <div class="co-tones">${Object.entries(TONO_TXT).map(([t,d])=>`<button type="button" data-co="tone" data-v="${t}" class="${c.tone===t?'on':''}" aria-pressed="${c.tone===t}"><b>${TONES[t]}</b><span>${d}</span></button>`).join('')}</div>
       ${S.week.blocks.length?'':'<div class="co-note">Todavía no tienes nada planificado. Arma tu semana en la pestaña Semana y yo me encargo de que la cumplas.</div>'}`;
     acts=(pushDev==='off'?`<button class="btn" type="button" data-co="push">Avisarme también con la app cerrada</button>`:'')+`<button class="btn red" type="button" data-co="introok">Empezar</button>`;
     foot='Puedes cambiar la voz, el tono, el agua y la hora de los hábitos en Ajustes.';
@@ -2072,7 +2073,7 @@ function coachSettings(){
     <form class="row" id="st-coach">
       <label class="inl"><input type="checkbox" id="co-on" ${c.on?'checked':''}> ${c.voz==='m'?'Instructora encendida':'Instructor encendido'}</label>
       <label class="inl"><input type="checkbox" id="co-voice" ${c.voice?'checked':''} ${canSpeak||canNat?'':'disabled'}> Que me hable en voz alta</label>
-      <label>Tono<select id="co-tone">${Object.entries(TONES).map(([k,n])=>`<option value="${k}" ${c.tone===k?'selected':''}>${n}</option>`).join('')}</select></label>
+      <div class="tonos" role="radiogroup" aria-label="Tono">${Object.entries(TONO_TXT).map(([k,d])=>`<button type="button" role="radio" aria-checked="${c.tone===k}" class="${c.tone===k?'on':''}" data-tono="${k}"><b>${TONES[k]}</b><span>${d}</span></button>`).join('')}</div><input type="hidden" id="co-tone" value="${esc(c.tone)}">
       <label>Agua cada<select id="co-every">${WATER_EVERY.map(m=>`<option value="${m}" ${w.every===m?'selected':''}>${m<60?m+' min':m===60?'1 hora':(m/60).toLocaleString('es-CL')+' horas'}</option>`).join('')}</select></label>
       <label>Agua desde<input id="co-from" type="time" value="${esc(w.from)}" required></label>
       <label>Agua hasta<input id="co-to" type="time" value="${esc(w.to)}" required></label>
@@ -2111,6 +2112,9 @@ $('#settings').addEventListener('click',async e=>{
   if(ds.closeSet!==undefined)return closeSettings();
   if(ds.ownerOpen!==undefined){closeSettings();enterOwner();return}
   if(ds.vz){const c=CO();c.voz=ds.vz==='m'?'m':'h';save('meta');vozElegida();render();return}
+  if(ds.tono&&TONES[ds.tono]){const c=CO();c.tone=ds.tono;$('#co-tone').value=ds.tono;save('meta');
+    document.querySelectorAll('.tonos [data-tono]').forEach(x=>{const on=x.dataset.tono===ds.tono;x.classList.toggle('on',on);x.setAttribute('aria-checked',on)});
+    audio();vozDi(fr('muestra'),e.target.closest('[data-tono]'));vozPrecarga();render();return}
   if(ds.vmotor){const c=CO();c.motor=ds.vmotor==='tel'?'tel':'nat';save('meta');vozElegida();return}
   if(ds.coTry!==undefined){audio();say(fr('start',{t:'tu primer bloque',h:hm(new Date())}));return}
   if(ds.pushOn!==undefined){b.disabled=true;await pushEnable();drawPushRow();render();return}
@@ -2159,7 +2163,7 @@ async function deleteAccount(btn){
     showAuth('entrar','Tu cuenta y todos tus datos fueron borrados.','ok');
   }catch(err){btn.disabled=false;btn.textContent='Borrar mi cuenta';toast(String(err.message||'No se pudo borrar').slice(0,90))}
 }
-function clearCache(id){try{const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('esquina:'+id+':'))ks.push(k)}ks.forEach(k=>localStorage.removeItem(k));localStorage.removeItem('esquina.coach.'+id)}catch(e){}}
+function clearCache(id){try{const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('esquina:'+id+':'))ks.push(k)}ks.forEach(k=>localStorage.removeItem(k));localStorage.removeItem('esquina.coach.'+id);localStorage.removeItem('esquina.vozpre')}catch(e){}}
 async function logout(){
   if(dirty.size){await flushAll()}
   if(dirty.size&&!confirm('Hay cambios que todavía no llegan a la nube (estás sin conexión). Si sales ahora, se pierden. ¿Salir igual?'))return;
