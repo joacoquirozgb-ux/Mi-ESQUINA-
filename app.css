@@ -629,3 +629,25 @@ label.inl input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
 }
 @keyframes fade{from{opacity:0}}
 .wave.b{opacity:.5}
+
+/* Fondos con carácter, sin degradados (pedido 09-11-2026: «bonito, atractivo, cómodo»). Se elige uno con data-fondo en <html>. */
+/* A · Papel: color arena con grano fino, como una hoja de cuaderno */
+:root[data-fondo="papel"]{--bg:#E6DCCF}
+:root[data-fondo="papel"] body{background-color:var(--bg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .22 0 0 0 0 .15 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E")}
+/* B · Esquina: una franja de tinta arriba y las tarjetas montadas encima, como la esquina del ring */
+:root[data-fondo="esquina"] body{background:var(--bg)}
+:root[data-fondo="esquina"] body::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(258px + env(safe-area-inset-top,0px));background:var(--ink);z-index:0;border-bottom:4px solid var(--marca);pointer-events:none}
+:root[data-fondo="esquina"] .wrap,:root[data-fondo="esquina"] .auth,:root[data-fondo="esquina"] .boot{position:relative;z-index:1}
+:root[data-fondo="esquina"] .top{color:var(--on-ink)}
+:root[data-fondo="esquina"] .top .hello span{color:var(--ink-muted)}
+:root[data-fondo="esquina"] .top .sync{background:var(--ink-2);border-color:var(--ink-line);color:var(--ink-muted)}
+:root[data-fondo="esquina"] .top .gear{background:var(--ink-2);border-color:var(--ink-line);color:var(--on-ink)}
+/* C · Lona: la trama del piso del ring, muy suave */
+:root[data-fondo="lona"]{--bg:#E9E1D6}
+:root[data-fondo="lona"] body{background-color:var(--bg);background-image:repeating-linear-gradient(0deg,rgba(90,70,50,.06) 0 1px,transparent 1px 5px),repeating-linear-gradient(90deg,rgba(90,70,50,.05) 0 1px,transparent 1px 5px)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"])[data-fondo="papel"]{--bg:#08090B}
+  :root:not([data-theme="light"])[data-fondo="lona"]{--bg:#07080A}
+  :root:not([data-theme="light"])[data-fondo="lona"] body{background-image:repeating-linear-gradient(0deg,rgba(232,234,240,.035) 0 1px,transparent 1px 5px),repeating-linear-gradient(90deg,rgba(232,234,240,.03) 0 1px,transparent 1px 5px)}
+  :root:not([data-theme="light"])[data-fondo="esquina"] body::before{background:#15171C}
+}
