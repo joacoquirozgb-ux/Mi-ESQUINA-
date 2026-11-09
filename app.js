@@ -251,7 +251,7 @@ function go(t){
 const prevRing={};
 function ring(p,size=104,stroke=11,key='day'){
   const r=(size-stroke)/2,c=2*Math.PI*r,to=c*(1-Math.min(1,p)),from=prevRing[key]??c;prevRing[key]=to;const g='rg-'+key;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--red2)"/><stop offset="1" style="stop-color:var(--red)"/></linearGradient></defs><circle class="track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#${g})" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" class="rprog" data-to="${to}" style="stroke-dashoffset:${from}"/></svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--marca)"/><stop offset="1" style="stop-color:var(--marca)"/></linearGradient></defs><circle class="track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#${g})" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" class="rprog" data-to="${to}" style="stroke-dashoffset:${from}"/></svg>`;
 }
 function beltHTML(bi){
   const b=bi.b;
@@ -309,7 +309,7 @@ function vInicio(){
       <h2>Cinturón <span class="chip num">${xp.toLocaleString('es-CL')} XP</span></h2>
       ${beltHTML(bi)}
       <div style="display:flex;justify-content:space-between;margin-top:10px;gap:8px;flex-wrap:wrap">
-        <div><span class="disp" style="font-size:26px">${bi.b.n.toUpperCase()}</span> <span class="muted">· ${bi.stripes} ${bi.stripes===1?'grado':'grados'}</span></div>
+        <div><span class="disp" style="font-size:26px">${bi.b.n}</span> <span class="muted">· ${bi.stripes} ${bi.stripes===1?'grado':'grados'}</span></div>
         <div class="muted" style="font-size:13px;align-self:center">${bi.next?`${bi.left.toLocaleString('es-CL')} XP para ${bi.next.n.toLowerCase()}`:'Cinturón máximo'}</div>
       </div>
     </div>
@@ -398,7 +398,7 @@ function vDinero(){
   const scUrl=location.origin+location.pathname+'#g-';
   return `
   <div class="sec-h" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;gap:6px"><button class="btn sm" data-mon="-1" aria-label="Mes anterior">‹</button><h3 class="disp" style="font-size:26px;text-transform:uppercase">${MESES[mm-1]} ${y}</h3><button class="btn sm" data-mon="1" aria-label="Mes siguiente">›</button></div>
+    <div style="display:flex;align-items:center;gap:6px"><button class="btn sm" data-mon="-1" aria-label="Mes anterior">‹</button><h3 class="disp" style="font-size:26px">${MESES[mm-1]} ${y}</h3><button class="btn sm" data-mon="1" aria-label="Mes siguiente">›</button></div>
   </div>
   <div class="grid g3">
     <div class="card tint" style="--c:var(--ok)"><h2>Entró</h2><div class="big num" data-count="${Math.round(I)}" data-kind="clp" data-ck="in">${clp(I)}</div></div>
@@ -541,11 +541,10 @@ function waterCard(){
   return `<div class="card tint" style="--c:var(--water)"><h2>Agua de hoy <span class="chip num" style="color:var(--water)">${ml>=w.goal?'Meta lista · +'+WATER_XP+' XP':Math.round(pct*100)+'%'}</span></h2>
   <div class="water">
     <div class="glass" id="glass"><svg viewBox="0 0 92 132" role="img" aria-label="Vaso con ${ml} ml de ${w.goal} ml">
-      <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:#6FD3FF"/><stop offset=".55" style="stop-color:var(--water)"/></linearGradient><clipPath id="vaso"><path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z"/></clipPath></defs>
+      <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--water)"/><stop offset="1" style="stop-color:var(--water)"/></linearGradient><clipPath id="vaso"><path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z"/></clipPath></defs>
       <path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z" fill="var(--sunk)"/>
       <g clip-path="url(#vaso)"><g class="wlevel" id="wlevel" data-to="${y(pct)}" style="transform:translateY(${y(from)}px)">${wave('b')}${wave('')}
-        ${pct>0?`<circle class="bub" cx="32" cy="100" r="2.2" fill="#fff"/><circle class="bub" cx="55" cy="108" r="1.6" fill="#fff" style="animation-delay:1s"/><circle class="bub" cx="44" cy="112" r="2" fill="#fff" style="animation-delay:1.9s"/>`:''}
-      </g></g>
+              </g></g>
       <path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z" fill="none" stroke="var(--fg)" stroke-opacity=".35" stroke-width="2.5"/>
       ${[.25,.5,.75].map(f=>`<line x1="70" x2="78" y1="${y(f)}" y2="${y(f)}" stroke="var(--fg)" stroke-opacity=".25" stroke-width="1.5"/>`).join('')}
     </svg></div>
@@ -599,7 +598,7 @@ function reveal(v){
   revealIO=new IntersectionObserver((ents,obs)=>{
     const now=performance.now();if(now-last>160)n=0;last=now;
     for(const en of ents){if(!en.isIntersecting)continue;const el=en.target;obs.unobserve(el);
-      el.style.setProperty('--rd',Math.min(n++,9)*60+'ms');el.classList.add('in','seen');
+      el.style.setProperty('--rd',Math.min(n++,7)*40+'ms');el.classList.add('in','seen');
       el.querySelectorAll('[data-count]').forEach(c=>countUp(c,0,+c.dataset.count));
       el.addEventListener('animationend',function done(ev){if(ev.target!==el)return;el.classList.remove('rv','in');el.style.removeProperty('--rd');el.removeEventListener('animationend',done)});
     }
@@ -611,7 +610,7 @@ const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches
 function countUp(el,from,to){
   if(RM||!isFinite(to)||!isFinite(from)||from===to)return;const k=el.dataset.kind||'int';
   const f=v=>k==='pct'?Math.round(v)+'%':k==='clp'?clp(v):k==='usd'?usd(v):k==='lt'?(v/1000).toLocaleString('es-CL',{maximumFractionDigits:2})+' L':String(Math.round(v));
-  const t0=performance.now(),dur=Math.min(1100,600+Math.abs(to-from)*2),tok=el._cu=(el._cu||0)+1;
+  const t0=performance.now(),dur=Math.min(600,300+Math.abs(to-from)),tok=el._cu=(el._cu||0)+1;
   (function step(t){if(el._cu!==tok)return;const q=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-q,3);el.textContent=f(from+(to-from)*e);if(q<1)requestAnimationFrame(step);else el.textContent=f(to)})(t0);
 }
 /* Texto que sale volando desde un elemento: +20 XP, +250 ml */
@@ -634,10 +633,10 @@ const FX=(()=>{let cv,cx,parts=[],raf=0;
   const run=()=>{if(!raf)raf=requestAnimationFrame(loop)};
   return{
     burst(x,y,c,n=18){if(RM)return;ensure();for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,v=2+Math.random()*4.5;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.5,g:.2,s:4+Math.random()*5,c,rot:0,vr:(Math.random()-.5)*.4,life:40+Math.random()*25,circle:Math.random()<.5})}run()},
-    rain(){if(RM)return;ensure();const cols=['#D3263A','#2155D6','#15897A','#C77A00','#8A3FD1','#1E90D6','#F4F4F2'];
+    rain(){if(RM)return;ensure();const cols=['#C8372D','#2F5DA8','#2B5C4E','#F0C23A','#7B4BA0','#2477B3','#F1ECE9'];
       for(let i=0;i<150;i++)parts.push({x:Math.random()*vw(),y:-20-Math.random()*vh()*.6,vx:(Math.random()-.5)*3,vy:2+Math.random()*3,g:.05,s:6+Math.random()*7,c:cols[i%cols.length],rot:Math.random()*6,vr:(Math.random()-.5)*.3,life:170+Math.random()*90});run()}
   }})();
-function burstAt(sel){const el=document.querySelector(sel);if(!el)return;const r=el.getBoundingClientRect();FX.burst(r.left+r.width/2,r.top+r.height/2,getComputedStyle(el).borderTopColor||'#D3263A')}
+function burstAt(sel){const el=document.querySelector(sel);if(!el)return;const r=el.getBoundingClientRect();FX.burst(r.left+r.width/2,r.top+r.height/2,getComputedStyle(el).borderTopColor||'#C8372D')}
 function safeUrl(u){return /^https?:\/\//i.test(String(u||'').trim())?String(u).trim().slice(0,500):''}
 const num=v=>{const s=String(v||'').replace(/\s|\$/g,'');if(/,\d{1,2}$/.test(s))return parseFloat(s.replace(/\./g,'').replace(',','.'));return parseFloat(s.replace(/[.,](?=\d{3}(\D|$))/g,'').replace(',','.'))||0};
 
@@ -670,7 +669,7 @@ const LINKS=[
 ];
 const DOLOR={habitos:'Sus hábitos',plata:'Su plata',tiempo:'Su tiempo',todo:'Todo junto',sin:'Sin responder'};
 const PAGA={si:'Sí',quizas:'Quizás',no:'No',sin:'Sin responder'};
-const AV_COL=['#E0283E','#2B5CE6','#0F9D7A','#D98A00','#8A3FD1','#1E90D6','#E85D9A'];
+const AV_COL=['#C8372D','#2F5DA8','#1E7A72','#A86B12','#7B4BA0','#2477B3','#55697A'];
 const avCol=id=>{let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;return AV_COL[h%AV_COL.length]};
 const initial=u=>esc(((u.nombre||u.email||'?').trim()[0]||'?').toUpperCase());
 const mailto=(to,subject,body)=>'mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(subject)+(body?'&body='+encodeURIComponent(body):'');
@@ -885,7 +884,7 @@ const OVIEWS={'d-resumen':vOResumen,'d-usuarios':vOUsuarios,'d-mensajes':vOMensa
 function odSheetHTML(u){
   return `
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-    <div style="display:flex;gap:14px;align-items:center;min-width:0"><span class="av lg" style="--c:${avCol(u.id)}">${initial(u)}</span><div style="min-width:0"><b class="disp" style="font-size:26px;text-transform:uppercase;display:block;line-height:1.05;overflow-wrap:anywhere">${esc(u.nombre||'Sin nombre')}</b><div class="muted od-mail" style="font-size:14px">${esc(u.email)}</div></div></div>
+    <div style="display:flex;gap:14px;align-items:center;min-width:0"><span class="av lg" style="--c:${avCol(u.id)}">${initial(u)}</span><div style="min-width:0"><b class="disp" style="font-size:26px;display:block;line-height:1.1;overflow-wrap:anywhere">${esc(u.nombre||'Sin nombre')}</b><div class="muted od-mail" style="font-size:14px">${esc(u.email)}</div></div></div>
     <button type="button" class="x" data-od="close" aria-label="Cerrar">×</button></div>
   ${u.suspendida?'<div class="od-warn">Cuenta suspendida: no puede entrar hasta que la reactives. Sus datos siguen guardados.</div>':''}
   <div class="list od-kv">
@@ -979,11 +978,9 @@ $('#od-sheet').addEventListener('click',e=>{if(e.target.id==='od-sheet')closeOdS
 dragToClose($('#od-sheet'),closeOdSheet);
 
 /* ---------- eventos de la app ---------- */
-/* Onda bajo el dedo y un pulso corto de vibración (en Android) en cada botón */
+/* Un pulso corto de vibración (en Android) en cada botón; el botón ya baja a 0,97 por CSS */
 document.addEventListener('pointerdown',e=>{
   const b=e.target.closest('.btn,.habit,nav.tabs button,.cats button,.picks button,.seg button,.gear,.fab');if(!b||b.disabled||b.closest('#alarm'))return;
-  if(!RM){const r=b.getBoundingClientRect(),z=Math.max(r.width,r.height)*2.2,sp=document.createElement('span');sp.className='rip';
-    sp.style.cssText=`width:${z}px;height:${z}px;left:${e.clientX-r.left-z/2}px;top:${e.clientY-r.top-z/2}px`;b.appendChild(sp);setTimeout(()=>sp.remove(),600)}
   try{navigator.vibrate&&navigator.vibrate(8)}catch(err){}
 },{passive:true});
 /* Al bajar aparece la barra compacta y el botón de gasto se achica; al subir vuelve */
@@ -1015,12 +1012,12 @@ document.addEventListener('click',e=>{
     if(log[k][ds.hab]){delete log[k][ds.hab];if(!Object.keys(log[k]).length)delete log[k];const id=ds.hab;celebrate=()=>{const b=document.querySelector(`[data-hab="${CSS.escape(id)}"]`);if(b)b.classList.add('unpop')}}
     else{const before=beltFor(totalXP());log[k][ds.hab]=h.pts;const after=beltFor(totalXP());
       const big=after.i>before.i||after.stripes>before.stripes||dayRatio(k)>=1;
-      toast(after.i>before.i?'¡Nuevo cinturón: '+after.b.n+'!':after.stripes>before.stripes?'¡Nuevo grado!':dayRatio(k)>=1?'Round perfecto 🥊':'+'+h.pts+' XP');
-      const id=ds.hab,pts=h.pts;celebrate=()=>{const sel=`[data-hab="${CSS.escape(id)}"]`,b=document.querySelector(sel);if(b)b.classList.add('pop');burstAt(sel+' .ck');flyAt(sel+' .pts','+'+pts+' XP');if(big)FX.rain()}}
+      toast(after.i>before.i?'¡Nuevo cinturón: '+after.b.n+'!':after.stripes>before.stripes?'¡Nuevo grado!':dayRatio(k)>=1?'Round perfecto':'+'+h.pts+' XP');
+      const id=ds.hab,pts=h.pts;celebrate=()=>{const sel=`[data-hab="${CSS.escape(id)}"]`,b=document.querySelector(sel);if(b)b.classList.add('pop');flyAt(sel+' .pts','+'+pts+' XP');if(big)FX.rain()}}
     save('habits');render();return;
   }
   if(ds.water){const k=today(),w=W(),before=w.log[k]||0;if(+ds.water>0)coachDrank();const nv=Math.max(0,before+(+ds.water));if(nv)w.log[k]=nv;else delete w.log[k];
-    if(before<w.goal&&nv>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');celebrate=()=>FX.rain()}else if(+ds.water>0){toast('+'+ds.water+' ml');const ml=ds.water;celebrate=()=>{burstAt('#glass svg path');flyAt('#glass','+'+ml+' ml','var(--water)')}}
+    if(before<w.goal&&nv>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');celebrate=()=>FX.rain()}else if(+ds.water>0){toast('+'+ds.water+' ml');const ml=ds.water;celebrate=()=>{flyAt('#glass','+'+ml+' ml','var(--water)')}}
     save('habits');render();const g=document.getElementById('glass');if(g){g.classList.add('splash')}return}
   if(ds.copy){const el=document.getElementById(ds.copy),txt=el?el.textContent:'';
     const ok=()=>toast('Enlace copiado');const fb=()=>{try{const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}catch(e){}toast('Mantén presionado para copiar')};
@@ -1172,9 +1169,9 @@ function startChallenge(src){
 }
 function drawChallenge(){
   const el=$('#alarm'),n=ch.count||0;el.className='overlay ringing';
-  el.innerHTML=`<div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800">${ch.src==='test'?'Prueba del reto':'¡Arriba'+(firstName()?', '+esc(firstName()):'')+'!'}</div>
+  el.innerHTML=`<div style="font-size:15px;font-weight:500">${ch.src==='test'?'Prueba del reto':'¡Arriba'+(firstName()?', '+esc(firstName()):'')+'!'}</div>
     <div class="count num" id="a-count">${n}</div>
-    <div style="font-family:var(--display);font-size:28px;text-transform:uppercase">de 10 ${ch.ex}</div>
+    <div style="font-size:26px;font-weight:300">de 10 ${ch.ex}</div>
     <div class="dots">${[...Array(10)].map((_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>
     <div class="how">${exHow(ch.ex)}</div>
     <div id="a-msg" style="min-height:22px;font-weight:800"></div>
@@ -2014,7 +2011,7 @@ const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator
 function openSettings(focus){
   const cd=S.meta.countdown||{};
   $('#set-body').innerHTML=`
-  <div style="display:flex;justify-content:space-between;align-items:center"><b class="disp" style="font-size:28px;text-transform:uppercase">Ajustes</b><button type="button" class="x" data-close-set aria-label="Cerrar">×</button></div>
+  <div style="display:flex;justify-content:space-between;align-items:center"><b class="disp" style="font-size:30px">Ajustes</b><button type="button" class="x" data-close-set aria-label="Cerrar">×</button></div>
   ${owner?`<div class="set-sec"><h4>Dueño</h4><button class="btn red" type="button" data-owner-open style="justify-self:start">${ICON_CROWN} Abrir el panel del dueño</button><div class="note">Solo tu cuenta ve este botón.</div></div>`:''}
   ${planSettings()}
   <div class="set-sec"><h4>Tu perfil</h4>
