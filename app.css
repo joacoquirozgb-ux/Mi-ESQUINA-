@@ -619,6 +619,69 @@ label.inl input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
 .welcome li::marker{font-family:var(--mono);color:var(--muted)}
 
 /* Menos movimiento si el teléfono lo pide: sin desplazamientos, solo un fundido corto */
+/* ---------- Comunidad ---------- */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.c-intro h2,.c-alta h2,.c-ayuda h2{font-size:20px;letter-spacing:-.01em;color:var(--fg)}
+.c-ayuda.fuerte h2{color:var(--on-ink)}
+.c-intro p{margin:6px 0 0}
+.c-alta,.c-new{display:grid;gap:12px;margin-top:12px}
+.c-alta label{display:grid;gap:6px;font-weight:500}
+.c-normas{margin:0;padding-left:20px;display:grid;gap:6px;color:var(--fg);font-size:15px;line-height:1.45}
+.c-ok{display:flex!important;align-items:center;gap:10px;min-height:44px}
+.c-ok input{width:22px;height:22px;min-height:0;accent-color:var(--act)}
+.c-temas{display:flex;flex-wrap:wrap;gap:6px}
+.c-temas button,.c-fil button{border:1px solid var(--line);background:var(--raise);color:var(--fg);border-radius:999px;padding:8px 14px;min-height:40px;font-weight:500;cursor:pointer;transition:background-color .14s ease,color .14s ease,transform .14s var(--curva)}
+.c-temas button.on,.c-fil button.on{background:var(--act);color:var(--on-act);border-color:var(--act)}
+.c-temas button:active,.c-fil button:active,.c-acts .btn:active{transform:scale(.97)}
+.c-fil{display:flex;gap:6px;background:none;padding:0 0 4px;margin-bottom:12px;max-width:100%;scrollbar-width:none}
+.c-fil::-webkit-scrollbar{display:none}
+.c-fil button{flex:none}
+.c-feed{gap:12px}
+.c-h{display:flex;align-items:center;gap:12px;min-width:0}
+.c-h b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-h .s,.c-r .s{font-size:13px}
+.c-av{width:38px;height:38px;font-size:16px}
+.c-r .c-av{width:30px;height:30px;font-size:13px}
+.c-tema{flex:none}
+.c-tema.t-animo{box-shadow:inset 3px 0 0 var(--a-contenido)}
+.c-tema.t-logro{box-shadow:inset 3px 0 0 var(--pend)}
+.c-tema.t-habitos{box-shadow:inset 3px 0 0 var(--ok)}
+.c-tema.t-plata{box-shadow:inset 3px 0 0 var(--blue)}
+.c-tema.t-tiempo{box-shadow:inset 3px 0 0 var(--marca)}
+.c-tema{padding-left:10px}
+.c-t{margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.5}
+.c-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.c-acts .btn{display:inline-flex;align-items:center;gap:6px;min-height:40px}
+.c-apoyo svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+.c-apoyo.on{background:var(--marca);border-color:var(--marca);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .c-apoyo.on{color:#050608}}
+:root[data-theme="dark"] .c-apoyo.on{color:#050608}
+.c-apoyo.on svg{fill:currentColor}
+.c-apoyo .num{font-family:var(--mono);font-size:13px}
+.c-apoyo .num:empty{display:none}
+.c-mas{margin-left:auto;padding:6px 14px;letter-spacing:.05em}
+.c-menu{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;padding:10px;background:var(--sunk);border-radius:18px}
+.c-menu .note{width:100%;margin:0 0 2px 4px}
+.c-resps{margin-top:12px;border-top:1px solid var(--line);padding-top:4px}
+.c-r{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.c-r .grow{flex:1;min-width:0}
+.c-r .c-t{margin-top:4px;font-size:15px}
+.c-r .x{flex:none;letter-spacing:.05em}
+.c-rf{display:grid;gap:8px;margin-top:12px}
+.c-rf textarea{min-height:72px}
+.c-rf .btn{justify-self:end}
+.c-ayuda{margin-top:12px}
+.c-ayuda p{margin:6px 0 0}
+.c-ayuda.fuerte{background:var(--ink);color:var(--on-ink);border-color:transparent}
+.c-ayuda.fuerte .note{color:var(--ink-muted)}
+.c-ayuda.fuerte .btn{background:var(--ink-2);color:var(--on-ink);border-color:var(--ink-line)}
+.c-ayuda.fuerte .btn.pri{background:var(--on-ink);color:var(--ink);border-color:var(--on-ink)}
+.c-tels{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.c-pie{margin:16px 4px 0;text-align:center}
+.od-com{margin-bottom:16px}
+.od-ci{padding-top:14px;margin-top:14px;border-top:1px solid var(--line)}
+.od-ci .od-ma{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
+.od-com .c-t{margin-top:6px}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{transition-duration:.01ms!important}
   .rv.in,.auth-in>*,.aform:not([hidden]),.sheet,.sheet-bg.closing .sheet,#view.slide-l,#view.slide-r,.top h1.swap,.co-in,.co-big,.co-msg,.co-item,.boot-logo{animation:fade .1s linear both!important}
@@ -630,11 +693,7 @@ label.inl input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
 @keyframes fade{from{opacity:0}}
 .wave.b{opacity:.5}
 
-/* Fondos con carácter, sin degradados (pedido 09-11-2026: «bonito, atractivo, cómodo»). Se elige uno con data-fondo en <html>. */
-/* A · Papel: color arena con grano fino, como una hoja de cuaderno */
-:root[data-fondo="papel"]{--bg:#E6DCCF}
-:root[data-fondo="papel"] body{background-color:var(--bg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .22 0 0 0 0 .15 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E")}
-/* B · Esquina: una franja de tinta arriba y las tarjetas montadas encima, como la esquina del ring */
+/* Fondo elegido por Joaquín (09-11-2026): la esquina. Franja de tinta arriba con línea roja y las tarjetas montadas encima, como la esquina del ring. Sin degradados. */
 :root[data-fondo="esquina"] body{background:var(--bg)}
 :root[data-fondo="esquina"] body::before{content:"";position:absolute;left:0;right:0;top:0;height:calc(258px + env(safe-area-inset-top,0px));background:var(--ink);z-index:0;border-bottom:4px solid var(--marca);pointer-events:none}
 :root[data-fondo="esquina"] .wrap,:root[data-fondo="esquina"] .auth,:root[data-fondo="esquina"] .boot{position:relative;z-index:1}
@@ -642,12 +701,9 @@ label.inl input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
 :root[data-fondo="esquina"] .top .hello span{color:var(--ink-muted)}
 :root[data-fondo="esquina"] .top .sync{background:var(--ink-2);border-color:var(--ink-line);color:var(--ink-muted)}
 :root[data-fondo="esquina"] .top .gear{background:var(--ink-2);border-color:var(--ink-line);color:var(--on-ink)}
-/* C · Lona: la trama del piso del ring, muy suave */
-:root[data-fondo="lona"]{--bg:#E9E1D6}
-:root[data-fondo="lona"] body{background-color:var(--bg);background-image:repeating-linear-gradient(0deg,rgba(90,70,50,.06) 0 1px,transparent 1px 5px),repeating-linear-gradient(90deg,rgba(90,70,50,.05) 0 1px,transparent 1px 5px)}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"])[data-fondo="papel"]{--bg:#08090B}
-  :root:not([data-theme="light"])[data-fondo="lona"]{--bg:#07080A}
-  :root:not([data-theme="light"])[data-fondo="lona"] body{background-image:repeating-linear-gradient(0deg,rgba(232,234,240,.035) 0 1px,transparent 1px 5px),repeating-linear-gradient(90deg,rgba(232,234,240,.03) 0 1px,transparent 1px 5px)}
-  :root:not([data-theme="light"])[data-fondo="esquina"] body::before{background:#15171C}
-}
+
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"])[data-fondo="esquina"] body::before{background:#15171C}}
+:root[data-theme="dark"][data-fondo="esquina"] body::before{background:#15171C}
+/* En la entrada y mientras carga, el fondo queda plano: el logo oscuro no se pierde sobre la franja */
+:root[data-fondo="esquina"] body:has(#auth:not([hidden]))::before,:root[data-fondo="esquina"] body:has(#boot:not([hidden]):not(.out))::before{display:none}
+body.en-com .fab{display:none}
