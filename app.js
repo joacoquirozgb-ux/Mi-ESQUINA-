@@ -294,10 +294,7 @@ function vInicio(){
   return `
   ${planCard()}
   ${welcomeCard()}
-  ${coachCard()}
-  ${alarmCard()}
-  <div class="grid g2 stack-sm" style="margin-top:12px">
-    <div class="card hero" style="display:flex;gap:16px;align-items:center">
+    <div class="card hero" style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
       <div class="ring">${ring(r)}<div class="c"><div><div class="big num" data-count="${Math.round(r*100)}" data-kind="pct" data-ck="pct">${Math.round(r*100)}%</div><div class="note">del día</div></div></div></div>
       <div style="min-width:0">
         <div class="eyebrow">Round de hoy</div>
@@ -305,6 +302,18 @@ function vInicio(){
         <div class="muted" style="font-size:14px">${pending.length?'Falta: '+pending.map(h=>esc(h.name.split(' (')[0])).join(', '):H().list.length?'Todo hecho hoy.':'Agrega hábitos en la pestaña Hábitos.'}</div>
       </div>
     </div>
+  ${nextBlockCard(todayBlocks,nowHM)}
+  <div class="sec" style="margin-top:20px">
+    <div class="sec-h"><h3>Marca tus hábitos</h3><button class="btn sm" data-go="habitos">Todos</button></div>
+    <div class="grid">${[...H().list].sort((x,y)=>(doneOn(k)[x.id]?1:0)-(doneOn(k)[y.id]?1:0)).map(h=>habitRow(h,k)).join('')||'<div class="empty">Agrega tu primer hábito en la pestaña Hábitos.</div>'}</div>
+  </div>
+  <div style="margin-top:24px">${waterCard()}</div>
+  <div class="sec">
+    <div class="sec-h"><h3>Hoy, ${DIAS[dow(k)].toLowerCase()}</h3><button class="btn sm" data-go="semana">Ver semana</button></div>
+    <div class="card"><div class="list">${todayBlocks.length?todayBlocks.map(b=>{const a=AREAS[b.area]||AREAS.salud;const now=b.start<=nowHM&&nowHM<b.end,v=planDone(k,b.id);return `<div class="li"><span class="dot" style="background:${a.c}"></span><div class="grow"><div class="t">${esc(b.title)} ${now?'<span class="chip" style="color:var(--red)">Ahora</span>':''}</div><div class="s num">${b.start}–${b.end} · ${esc(a.n)}${b.lock?' · protegido':''}${v===1?' · cumplido':v===0?' · no cumplido':''}</div></div>${b.start<=nowHM?planBtns(b,v):''}</div>`}).join(''):'<div class="empty">Nada agendado hoy.</div>'}</div></div>
+  </div>
+  <div style="margin-top:24px">${coachCard()}</div>
+  <div class="sec"><div class="sec-h"><h3>Cómo vas</h3></div>
     <div class="card">
       <h2>Cinturón <span class="chip num">${xp.toLocaleString('es-CL')} XP</span></h2>
       ${beltHTML(bi)}
@@ -313,24 +322,23 @@ function vInicio(){
         <div class="muted" style="font-size:13px;align-self:center">${bi.next?`${bi.left.toLocaleString('es-CL')} XP para ${bi.next.n.toLowerCase()}`:'Cinturón máximo'}</div>
       </div>
     </div>
-  </div>
-  <div style="margin-top:12px">${waterCard()}</div>
-  <div class="grid g3${projOk?'':' n4'}" style="margin-top:12px">
+  <div class="grid g3${projOk?'':' n4'}">
     <div class="card tint" style="--c:var(--red)"><h2>Racha</h2><div class="flame num" data-count="${st}" data-ck="racha">${st}</div><div class="note">${st===1?'día con la mitad o más':'días seguidos con la mitad o más'}</div></div>
     ${countdownCard()}
     <div class="card tint" style="--c:${ing-gas>=0?'var(--ok)':'var(--red)'}"><h2>Saldo del mes</h2><div class="big num" data-count="${ing-gas}" data-kind="clp" data-ck="saldo">${clp(ing-gas)}</div><div class="note">${clp(ing)} entra · ${clp(gas)} sale</div></div>
     ${projOk?projCards(tm,active):''}
     <div class="card tint" style="--c:var(--a-familia)"><h2>Gasto más grande</h2>${topCat(tx)}</div>
   </div>
-  ${weekGlance(k)}
-  <div class="sec">
-    <div class="sec-h"><h3>Hoy, ${DIAS[dow(k)].toLowerCase()}</h3><button class="btn sm" data-go="semana">Ver semana</button></div>
-    <div class="card"><div class="list">${todayBlocks.length?todayBlocks.map(b=>{const a=AREAS[b.area]||AREAS.salud;const now=b.start<=nowHM&&nowHM<b.end,v=planDone(k,b.id);return `<div class="li"><span class="dot" style="background:${a.c}"></span><div class="grow"><div class="t">${esc(b.title)} ${now?'<span class="chip" style="color:var(--red)">Ahora</span>':''}</div><div class="s num">${b.start}–${b.end} · ${esc(a.n)}${b.lock?' · protegido':''}${v===1?' · cumplido':v===0?' · no cumplido':''}</div></div>${b.start<=nowHM?planBtns(b,v):''}</div>`}).join(''):'<div class="empty">Nada agendado hoy.</div>'}</div></div>
   </div>
-  <div class="sec">
-    <div class="sec-h"><h3>Marca tus hábitos</h3><button class="btn sm" data-go="habitos">Todos</button></div>
-    <div class="grid">${H().list.map(h=>habitRow(h,k)).join('')||'<div class="empty">Agrega tu primer hábito en la pestaña Hábitos.</div>'}</div>
-  </div>`;
+  ${weekGlance(k)}
+  <div style="margin-top:24px">${alarmCard()}</div>`;
+}
+/* Lo que toca ahora o lo siguiente de la agenda de hoy: la primera pregunta del día es «¿qué hago ahora?» */
+function nextBlockCard(blocks,nowHM){
+  const cur=blocks.find(b=>b.start<=nowHM&&nowHM<b.end),nxt=blocks.find(b=>b.start>nowHM),b=cur||nxt;
+  if(!b)return blocks.length?'':`<div class="card" style="margin-bottom:12px"><div class="eyebrow">Tu agenda de hoy</div><div style="font-weight:500;font-size:17px;margin:4px 0 10px">No tienes nada planificado.</div><button class="btn sm" data-go="semana">Planificar mi semana</button></div>`;
+  const a=AREAS[b.area]||AREAS.salud;
+  return `<div class="card tint" style="--c:${a.c};margin-bottom:12px"><h2>${cur?'Ahora':'Lo que sigue'}</h2><div style="font-weight:500;font-size:20px;line-height:1.25;overflow-wrap:anywhere">${esc(b.title)}</div><div class="note num" style="margin-top:4px">${cur?'hasta las '+b.end:'a las '+b.start}  ·  ${esc(a.n)}${b.lock?'  ·  protegido':''}</div></div>`;
 }
 function weekGlance(k){
   const mon=addDays(k,-dow(k));
@@ -450,13 +458,6 @@ function vDinero(){
   </div>`;
 }
 
-/* Lo que pasa hoy en Mi Esquina, con los mismos números del panel del dueño */
-function esquinaLive(){
-  if(!owner)return '';const r=OD.resumen;
-  if(!r){if(!odErr.resumen)odLoad('resumen');return ''}
-  const v=r.ventas||{},n=x=>+x||0,on=!!(r.cobro&&r.cobro.desde),u=n(r.usuarios&&r.usuarios.total);
-  return `<div class="card pl-card" style="margin-bottom:12px"><div class="pl-row"><div style="min-width:0"><div class="eyebrow">Mi Esquina en vivo</div><div class="pl-ct num">${clp(n(v.mrr))} al mes</div><div class="note">${n(v.activas)} ${n(v.activas)===1?'persona pagando':'personas pagando'} · ${u} ${u===1?'cuenta':'cuentas'}${on?'':' · cobro apagado'}</div></div><button class="btn sm" type="button" data-cobros>Ver cobros</button></div></div>`;
-}
 function vProyectos(){
   const m=monthKey(today());const tm=toolsMonth(m);const C=S.claude;
   const perProj={};C.usage.filter(u=>monthKey(u.date)===m).forEach(u=>perProj[u.proj||'Sin proyecto']=(perProj[u.proj||'Sin proyecto']||0)+(+u.usd||0));
@@ -465,7 +466,7 @@ function vProyectos(){
   const pipeline=C.projects.filter(p=>p.status!=='vendido').reduce((a,p)=>a+(+p.value||0),0);
   const cobrado=C.projects.filter(p=>p.status==='vendido').reduce((a,p)=>a+(+p.value||0),0);
   const usage=[...C.usage].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
-  return `${esquinaLive()}
+  return `
   <div class="grid g3">
     <div class="card tint" style="--c:var(--blue)"><h2>Herramientas · ${MESES[+m.slice(5)-1]}</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp" data-ck="tools">${clp(tm.total)}</div><div class="note">${clp(tm.subs)} fijo${tm.apiUsd?' · '+usd(tm.apiUsd)+' variable':''}</div></div>
     <div class="card tint" style="--c:var(--warn)"><h2>Por cobrar</h2><div class="big num" data-count="${Math.round(pipeline)}" data-kind="clp" data-ck="pipe">${clp(pipeline)}</div><div class="note">en proyectos abiertos</div></div>
@@ -1964,7 +1965,7 @@ $('#plans').addEventListener('click',async e=>{
 dragToClose($('#plans'),closePlans);
 /* ---- tarjeta en Inicio ---- */
 function planCard(){
-  const p=PL;if(!p||!p.cobro||p.motivo==='dueno'||p.motivo==='libre')return '';
+  const p=PL;if(owner||!p||!p.cobro||p.motivo==='dueno'||p.motivo==='libre')return '';
   const pend=payPending();
   if(p.motivo==='sin'){
     if(p.modo==='basico')return `<div class="card pl-card warn"><div class="eyebrow">Plan</div><div class="pl-ct">Tu prueba del instructor terminó</div><div class="note">Hábitos, plata y semana siguen gratis. El instructor y sus avisos vuelven con un plan.</div><div class="co-btns"><button class="btn red" type="button" data-planes>Ver planes</button>${pend?'<button class="btn" type="button" data-pay-check>Ya pagué</button>':''}</div></div>`;
@@ -1981,7 +1982,8 @@ function planCard(){
 /* ---- sección en Ajustes ---- */
 function planSettings(){
   const p=PL;
-  if(!p||(!p.cobro&&!owner))return '<div id="set-plan" hidden></div>';
+  // El dueño no ve planes ni cobros en su propia app: eso vive solo en su panel
+  if(owner||!p||!p.cobro)return '<div id="set-plan" hidden></div>';
   let line,btns='';
   if(!p.cobro)line='El cobro está apagado: todos usan la app gratis. Lo enciendes en tu panel, en Cobros.';
   else if(p.motivo==='dueno')line='Eres el dueño: tienes todo sin pagar.';
