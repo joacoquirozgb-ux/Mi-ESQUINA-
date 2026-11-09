@@ -1,11 +1,11 @@
 /* Mi Esquina, diseño v3 (09-11-2026). Protocolo de diseño de la bóveda («Interfaz y animación de apps y webs»):
    tokens primero, lo que contiene es redondo y lo que mide es recto, colores planos con significado,
    Outfit para superficie y JetBrains Mono para cifras, controles bajo 300 ms con salida rápida.
-   Claro = suelo cálido durazno, salvia y menta. Oscuro = negro plano. La marca (la esquina roja) solo vive en el logo. */
+   Claro = un solo color de papel cálido, plano (sin degradados, 09-11-2026). Oscuro = negro plano. La marca (la esquina roja) solo vive en el logo. */
 :root{
   /* Suelo y superficies */
-  --bg:#EDDBCB; --bg-2:#DBDDDD; --bg-3:#DBE3D4;
-  --surface:#F1ECE9; --raise:#FBF8F6; --sunk:#E5DCD5; --line:#D6CBC2; --edge:rgba(23,25,25,.08);
+  --bg:#ECE6E0; --bg-2:#ECE6E0; --bg-3:#ECE6E0;
+  --surface:#F7F4F1; --raise:#FFFFFF; --sunk:#E6DFD8; --line:#D6CBC2; --edge:rgba(23,25,25,.08);
   /* Texto */
   --fg:#171919; --muted:#5C5752;
   /* Acción y estados (siempre con palabra o signo además del color) */
@@ -24,7 +24,7 @@
   --nav:#171919; --nav-fg:#B9B3AD; --nav-on:#F1ECE9; --nav-on-fg:#171919;
   --sh1:0 1px 2px rgba(23,25,25,.05),0 10px 24px -14px rgba(23,25,25,.22);
   --sh2:0 2px 6px rgba(23,25,25,.06),0 24px 48px -20px rgba(23,25,25,.4);
-  --glass:rgba(241,236,233,.82);
+  --glass:#F7F4F1;
   --sans:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
   --display:var(--sans); --body:var(--sans);
@@ -48,7 +48,7 @@
   --nav:#121419; --nav-fg:#9BA1AD; --nav-on:#FFFFFF; --nav-on-fg:#050608;
   --sh1:0 0 0 1px rgba(232,234,240,.05);
   --sh2:0 0 0 1px rgba(232,234,240,.07),0 24px 48px -20px rgba(0,0,0,.9);
-  --glass:rgba(14,16,20,.86);
+  --glass:#0E1014;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#050608; --bg-2:#050608; --bg-3:#050608;
@@ -64,7 +64,7 @@
   --nav:#121419; --nav-fg:#9BA1AD; --nav-on:#FFFFFF; --nav-on-fg:#050608;
   --sh1:0 0 0 1px rgba(232,234,240,.05);
   --sh2:0 0 0 1px rgba(232,234,240,.07),0 24px 48px -20px rgba(0,0,0,.9);
-  --glass:rgba(14,16,20,.86);
+  --glass:#0E1014;
   color-scheme:dark}
 
 /* Base. touch-action evita el zoom con doble toque; los campos usan 16 px para que el iPhone no acerque la pantalla. */
@@ -72,7 +72,7 @@
 [hidden]{display:none!important}
 html{background:var(--bg);color:var(--fg);-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}
 *{touch-action:manipulation}
-body{margin:0;min-height:100vh;background:linear-gradient(165deg,var(--bg) 0%,var(--bg-2) 55%,var(--bg-3) 100%) fixed;font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;-webkit-font-smoothing:antialiased}
+body{margin:0;min-height:100vh;background:var(--bg);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;-webkit-font-smoothing:antialiased}
 button,a,.habit,label{-webkit-tap-highlight-color:transparent}
 button{-webkit-user-select:none;user-select:none;touch-action:manipulation}
 h1,h2,h3{margin:0;text-wrap:balance}
@@ -104,8 +104,7 @@ code{font-family:var(--mono);font-size:.88em}
 .gear:active{transform:scale(.97)}
 @media (hover:hover) and (pointer:fine){.gear:hover{background:var(--surface)}}
 /* Barra compacta que aparece al bajar */
-.mini{position:fixed;left:0;right:0;top:0;z-index:18;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 9px;background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-bottom:1px solid var(--edge);transform:translateY(-110%);transition:transform .26s var(--curva);pointer-events:none}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.mini{background:var(--surface)}}
+.mini{position:fixed;left:0;right:0;top:0;z-index:18;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 16px 9px;background:var(--glass);border-bottom:1px solid var(--edge);transform:translateY(-110%);transition:transform .26s var(--curva);pointer-events:none}
 .mini b{font-family:var(--sans);font-weight:300;font-size:22px;letter-spacing:-.03em;line-height:1.1}
 .mini b span{color:var(--marca);font-weight:500}
 .mini .sync{margin:0}
@@ -583,7 +582,7 @@ label.inl input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
 .boot-bar i{display:block;width:40%;height:100%;background:var(--fg);animation:load 1.1s linear infinite}
 @keyframes load{from{transform:translateX(-110%)}to{transform:translateX(260%)}}
 
-/* Ingreso: tarjeta de vidrio sobre el suelo cálido */
+/* Ingreso: tarjeta plana */
 .auth{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:calc(24px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
 .auth-in{width:100%;max-width:420px;display:grid;gap:16px}
 .auth-in>*{animation:enter .36s var(--curva) both}
@@ -595,8 +594,7 @@ label.inl input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
 .auth .seg[data-on="1"]::before{transform:translateX(100%)}
 .auth .seg button{padding:10px;min-height:44px;border-radius:999px}
 .auth .seg button.on{background:none;box-shadow:none;color:var(--on-act)}
-.aform{background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid var(--edge);border-radius:var(--r);padding:22px;display:grid;gap:14px;box-shadow:var(--sh2)}
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.aform{background:var(--surface)}}
+.aform{background:var(--glass);border:1px solid var(--edge);border-radius:var(--r);padding:22px;display:grid;gap:14px;box-shadow:var(--sh2)}
 .aform:not([hidden]){animation:enter .3s var(--curva) both}
 .aform label{display:grid;gap:6px;font-size:14px;font-weight:500}
 .aform fieldset{border:0;padding:0;margin:0;display:grid;gap:6px;min-width:0}
