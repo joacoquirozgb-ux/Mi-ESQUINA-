@@ -1,9 +1,9 @@
 /* Mi Esquina: permite abrir la app sin conexión y muestra los avisos del instructor. Siempre intenta traer la versión nueva primero. */
-const CACHE='mi-esquina-v8';
+const CACHE='mi-esquina-v10';
 /* Las frases grabadas del instructor no cambian (si se graban de nuevo, van en otra carpeta voz/vN), así que se guardan aparte y no se borran con cada versión */
 const VOZ='mi-esquina-voz-v1';
 const SHELL=['./','index.html','app.html','app.js','app.css','fonts.css','vendor/supabase.js','manifest.webmanifest','icons/icon-192.png','icons/badge-96.png',
-  'fonts/anton-latin-400-normal.woff2','fonts/figtree-latin-400-normal.woff2','fonts/figtree-latin-600-normal.woff2','fonts/figtree-latin-700-normal.woff2'];
+  'fonts/outfit-latin-300-normal.woff2','fonts/outfit-latin-400-normal.woff2','fonts/outfit-latin-500-normal.woff2','fonts/jetbrains-mono-latin-500-normal.woff2'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE&&k!==VOZ).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{

@@ -216,6 +216,7 @@ const ICONS={
   dinero:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/>',
   claude:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
   semana:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  comunidad:'<circle cx="8.5" cy="8" r="3.2"/><circle cx="16.5" cy="9" r="2.6"/><path d="M2.5 20a6 6 0 0 1 12 0M14.8 14.3A5 5 0 0 1 21.5 19"/>',
   'd-resumen':'<path d="M3 20h18"/><path d="M6.5 16v-4M11 16V7M15.5 16v-6M20 16V4"/>',
   'd-usuarios':'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
   'd-mensajes':'<path d="M21 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.4-5A8.5 8.5 0 1 1 21 12z"/>',
@@ -223,14 +224,14 @@ const ICONS={
   'd-herr':'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
   'd-salir':'<path d="M10 18l-6-6 6-6M4 12h16"/>'
 };
-const USER_TABS=[['inicio','Inicio'],['habitos','Hábitos'],['dinero','Dinero'],['claude','Proyectos'],['semana','Semana']];
+const USER_TABS=[['inicio','Inicio'],['habitos','Hábitos'],['dinero','Dinero'],['claude','Proyectos'],['semana','Semana'],['comunidad','Juntos']];
 const OWNER_TABS=[['d-resumen','Resumen'],['d-usuarios','Usuarios'],['d-mensajes','Mensajes'],['d-cobros','Cobros'],['d-herr','Enlaces'],['d-salir','Mi app']];
 /* Proyectos es solo del dueño: a las demás cuentas no se les muestra y el servidor no les deja guardarlo.
    projOk recuerda en este equipo que la cuenta es del dueño, para no esconderle la pestaña mientras se confirma. */
 let projOk=false;
 const userTabs=()=>projOk?USER_TABS:USER_TABS.filter(t=>t[0]!=='claude');
 let TABS=userTabs();
-const TITLES={inicio:['Mi','Esquina'],habitos:['Tus','Hábitos'],dinero:['Tu','Plata'],claude:['Tus','Proyectos'],semana:['Tu','Semana'],
+const TITLES={inicio:['Mi','Esquina'],habitos:['Tus','Hábitos'],dinero:['Tu','Plata'],claude:['Tus','Proyectos'],semana:['Tu','Semana'],comunidad:['Tu','Comunidad'],
   'd-resumen':['Panel del','Dueño'],'d-usuarios':['Tu','Gente'],'d-mensajes':['Tus','Mensajes'],'d-cobros':['Tus','Cobros'],'d-herr':['Tus','Herramientas']};
 let tab='inicio', moneyMonth=monthKey(today()), txType='gasto';
 function drawTabs(){
@@ -251,7 +252,7 @@ function go(t){
 const prevRing={};
 function ring(p,size=104,stroke=11,key='day'){
   const r=(size-stroke)/2,c=2*Math.PI*r,to=c*(1-Math.min(1,p)),from=prevRing[key]??c;prevRing[key]=to;const g='rg-'+key;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--red2)"/><stop offset="1" style="stop-color:var(--red)"/></linearGradient></defs><circle class="track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#${g})" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" class="rprog" data-to="${to}" style="stroke-dashoffset:${from}"/></svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--marca)"/><stop offset="1" style="stop-color:var(--marca)"/></linearGradient></defs><circle class="track" cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="${stroke}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#${g})" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" class="rprog" data-to="${to}" style="stroke-dashoffset:${from}"/></svg>`;
 }
 function beltHTML(bi){
   const b=bi.b;
@@ -294,10 +295,7 @@ function vInicio(){
   return `
   ${planCard()}
   ${welcomeCard()}
-  ${coachCard()}
-  ${alarmCard()}
-  <div class="grid g2 stack-sm" style="margin-top:12px">
-    <div class="card hero" style="display:flex;gap:16px;align-items:center">
+    <div class="card hero" style="display:flex;gap:16px;align-items:center;margin-bottom:12px">
       <div class="ring">${ring(r)}<div class="c"><div><div class="big num" data-count="${Math.round(r*100)}" data-kind="pct" data-ck="pct">${Math.round(r*100)}%</div><div class="note">del día</div></div></div></div>
       <div style="min-width:0">
         <div class="eyebrow">Round de hoy</div>
@@ -305,32 +303,43 @@ function vInicio(){
         <div class="muted" style="font-size:14px">${pending.length?'Falta: '+pending.map(h=>esc(h.name.split(' (')[0])).join(', '):H().list.length?'Todo hecho hoy.':'Agrega hábitos en la pestaña Hábitos.'}</div>
       </div>
     </div>
+  ${nextBlockCard(todayBlocks,nowHM)}
+  <div class="sec" style="margin-top:20px">
+    <div class="sec-h"><h3>Marca tus hábitos</h3><button class="btn sm" data-go="habitos">Todos</button></div>
+    <div class="grid">${[...H().list].sort((x,y)=>(doneOn(k)[x.id]?1:0)-(doneOn(k)[y.id]?1:0)).map(h=>habitRow(h,k)).join('')||'<div class="empty">Agrega tu primer hábito en la pestaña Hábitos.</div>'}</div>
+  </div>
+  <div style="margin-top:24px">${waterCard()}</div>
+  <div class="sec">
+    <div class="sec-h"><h3>Hoy, ${DIAS[dow(k)].toLowerCase()}</h3><button class="btn sm" data-go="semana">Ver semana</button></div>
+    <div class="card"><div class="list">${todayBlocks.length?todayBlocks.map(b=>{const a=AREAS[b.area]||AREAS.salud;const now=b.start<=nowHM&&nowHM<b.end,v=planDone(k,b.id);return `<div class="li"><span class="dot" style="background:${a.c}"></span><div class="grow"><div class="t">${esc(b.title)} ${now?'<span class="chip" style="color:var(--red)">Ahora</span>':''}</div><div class="s num">${b.start}–${b.end} · ${esc(a.n)}${b.lock?' · protegido':''}${v===1?' · cumplido':v===0?' · no cumplido':''}</div></div>${b.start<=nowHM?planBtns(b,v):''}</div>`}).join(''):'<div class="empty">Nada agendado hoy.</div>'}</div></div>
+  </div>
+  <div style="margin-top:24px">${coachCard()}</div>
+  <div class="sec"><div class="sec-h"><h3>Cómo vas</h3></div>
     <div class="card">
       <h2>Cinturón <span class="chip num">${xp.toLocaleString('es-CL')} XP</span></h2>
       ${beltHTML(bi)}
       <div style="display:flex;justify-content:space-between;margin-top:10px;gap:8px;flex-wrap:wrap">
-        <div><span class="disp" style="font-size:26px">${bi.b.n.toUpperCase()}</span> <span class="muted">· ${bi.stripes} ${bi.stripes===1?'grado':'grados'}</span></div>
+        <div><span class="disp" style="font-size:26px">${bi.b.n}</span> <span class="muted">· ${bi.stripes} ${bi.stripes===1?'grado':'grados'}</span></div>
         <div class="muted" style="font-size:13px;align-self:center">${bi.next?`${bi.left.toLocaleString('es-CL')} XP para ${bi.next.n.toLowerCase()}`:'Cinturón máximo'}</div>
       </div>
     </div>
-  </div>
-  <div style="margin-top:12px">${waterCard()}</div>
-  <div class="grid g3${projOk?'':' n4'}" style="margin-top:12px">
+  <div class="grid g3${projOk?'':' n4'}">
     <div class="card tint" style="--c:var(--red)"><h2>Racha</h2><div class="flame num" data-count="${st}" data-ck="racha">${st}</div><div class="note">${st===1?'día con la mitad o más':'días seguidos con la mitad o más'}</div></div>
     ${countdownCard()}
     <div class="card tint" style="--c:${ing-gas>=0?'var(--ok)':'var(--red)'}"><h2>Saldo del mes</h2><div class="big num" data-count="${ing-gas}" data-kind="clp" data-ck="saldo">${clp(ing-gas)}</div><div class="note">${clp(ing)} entra · ${clp(gas)} sale</div></div>
     ${projOk?projCards(tm,active):''}
     <div class="card tint" style="--c:var(--a-familia)"><h2>Gasto más grande</h2>${topCat(tx)}</div>
   </div>
-  ${weekGlance(k)}
-  <div class="sec">
-    <div class="sec-h"><h3>Hoy, ${DIAS[dow(k)].toLowerCase()}</h3><button class="btn sm" data-go="semana">Ver semana</button></div>
-    <div class="card"><div class="list">${todayBlocks.length?todayBlocks.map(b=>{const a=AREAS[b.area]||AREAS.salud;const now=b.start<=nowHM&&nowHM<b.end,v=planDone(k,b.id);return `<div class="li"><span class="dot" style="background:${a.c}"></span><div class="grow"><div class="t">${esc(b.title)} ${now?'<span class="chip" style="color:var(--red)">Ahora</span>':''}</div><div class="s num">${b.start}–${b.end} · ${esc(a.n)}${b.lock?' · protegido':''}${v===1?' · cumplido':v===0?' · no cumplido':''}</div></div>${b.start<=nowHM?planBtns(b,v):''}</div>`}).join(''):'<div class="empty">Nada agendado hoy.</div>'}</div></div>
   </div>
-  <div class="sec">
-    <div class="sec-h"><h3>Marca tus hábitos</h3><button class="btn sm" data-go="habitos">Todos</button></div>
-    <div class="grid">${H().list.map(h=>habitRow(h,k)).join('')||'<div class="empty">Agrega tu primer hábito en la pestaña Hábitos.</div>'}</div>
-  </div>`;
+  ${weekGlance(k)}
+  <div style="margin-top:24px">${alarmCard()}</div>`;
+}
+/* Lo que toca ahora o lo siguiente de la agenda de hoy: la primera pregunta del día es «¿qué hago ahora?» */
+function nextBlockCard(blocks,nowHM){
+  const cur=blocks.find(b=>b.start<=nowHM&&nowHM<b.end),nxt=blocks.find(b=>b.start>nowHM),b=cur||nxt;
+  if(!b)return blocks.length?'':`<div class="card" style="margin-bottom:12px"><div class="eyebrow">Tu agenda de hoy</div><div style="font-weight:500;font-size:17px;margin:4px 0 10px">No tienes nada planificado.</div><button class="btn sm" data-go="semana">Planificar mi semana</button></div>`;
+  const a=AREAS[b.area]||AREAS.salud;
+  return `<div class="card tint" style="--c:${a.c};margin-bottom:12px"><h2>${cur?'Ahora':'Lo que sigue'}</h2><div style="font-weight:500;font-size:20px;line-height:1.25;overflow-wrap:anywhere">${esc(b.title)}</div><div class="note num" style="margin-top:4px">${cur?'hasta las '+b.end:'a las '+b.start}  ·  ${esc(a.n)}${b.lock?'  ·  protegido':''}</div></div>`;
 }
 function weekGlance(k){
   const mon=addDays(k,-dow(k));
@@ -398,7 +407,7 @@ function vDinero(){
   const scUrl=location.origin+location.pathname+'#g-';
   return `
   <div class="sec-h" style="margin-bottom:12px">
-    <div style="display:flex;align-items:center;gap:6px"><button class="btn sm" data-mon="-1" aria-label="Mes anterior">‹</button><h3 class="disp" style="font-size:26px;text-transform:uppercase">${MESES[mm-1]} ${y}</h3><button class="btn sm" data-mon="1" aria-label="Mes siguiente">›</button></div>
+    <div style="display:flex;align-items:center;gap:6px"><button class="btn sm" data-mon="-1" aria-label="Mes anterior">‹</button><h3 class="disp" style="font-size:26px">${MESES[mm-1]} ${y}</h3><button class="btn sm" data-mon="1" aria-label="Mes siguiente">›</button></div>
   </div>
   <div class="grid g3">
     <div class="card tint" style="--c:var(--ok)"><h2>Entró</h2><div class="big num" data-count="${Math.round(I)}" data-kind="clp" data-ck="in">${clp(I)}</div></div>
@@ -450,13 +459,6 @@ function vDinero(){
   </div>`;
 }
 
-/* Lo que pasa hoy en Mi Esquina, con los mismos números del panel del dueño */
-function esquinaLive(){
-  if(!owner)return '';const r=OD.resumen;
-  if(!r){if(!odErr.resumen)odLoad('resumen');return ''}
-  const v=r.ventas||{},n=x=>+x||0,on=!!(r.cobro&&r.cobro.desde),u=n(r.usuarios&&r.usuarios.total);
-  return `<div class="card pl-card" style="margin-bottom:12px"><div class="pl-row"><div style="min-width:0"><div class="eyebrow">Mi Esquina en vivo</div><div class="pl-ct num">${clp(n(v.mrr))} al mes</div><div class="note">${n(v.activas)} ${n(v.activas)===1?'persona pagando':'personas pagando'} · ${u} ${u===1?'cuenta':'cuentas'}${on?'':' · cobro apagado'}</div></div><button class="btn sm" type="button" data-cobros>Ver cobros</button></div></div>`;
-}
 function vProyectos(){
   const m=monthKey(today());const tm=toolsMonth(m);const C=S.claude;
   const perProj={};C.usage.filter(u=>monthKey(u.date)===m).forEach(u=>perProj[u.proj||'Sin proyecto']=(perProj[u.proj||'Sin proyecto']||0)+(+u.usd||0));
@@ -465,7 +467,7 @@ function vProyectos(){
   const pipeline=C.projects.filter(p=>p.status!=='vendido').reduce((a,p)=>a+(+p.value||0),0);
   const cobrado=C.projects.filter(p=>p.status==='vendido').reduce((a,p)=>a+(+p.value||0),0);
   const usage=[...C.usage].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
-  return `${esquinaLive()}
+  return `
   <div class="grid g3">
     <div class="card tint" style="--c:var(--blue)"><h2>Herramientas · ${MESES[+m.slice(5)-1]}</h2><div class="big num" data-count="${Math.round(tm.total)}" data-kind="clp" data-ck="tools">${clp(tm.total)}</div><div class="note">${clp(tm.subs)} fijo${tm.apiUsd?' · '+usd(tm.apiUsd)+' variable':''}</div></div>
     <div class="card tint" style="--c:var(--warn)"><h2>Por cobrar</h2><div class="big num" data-count="${Math.round(pipeline)}" data-kind="clp" data-ck="pipe">${clp(pipeline)}</div><div class="note">en proyectos abiertos</div></div>
@@ -541,11 +543,10 @@ function waterCard(){
   return `<div class="card tint" style="--c:var(--water)"><h2>Agua de hoy <span class="chip num" style="color:var(--water)">${ml>=w.goal?'Meta lista · +'+WATER_XP+' XP':Math.round(pct*100)+'%'}</span></h2>
   <div class="water">
     <div class="glass" id="glass"><svg viewBox="0 0 92 132" role="img" aria-label="Vaso con ${ml} ml de ${w.goal} ml">
-      <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:#6FD3FF"/><stop offset=".55" style="stop-color:var(--water)"/></linearGradient><clipPath id="vaso"><path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z"/></clipPath></defs>
+      <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--water)"/><stop offset="1" style="stop-color:var(--water)"/></linearGradient><clipPath id="vaso"><path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z"/></clipPath></defs>
       <path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z" fill="var(--sunk)"/>
       <g clip-path="url(#vaso)"><g class="wlevel" id="wlevel" data-to="${y(pct)}" style="transform:translateY(${y(from)}px)">${wave('b')}${wave('')}
-        ${pct>0?`<circle class="bub" cx="32" cy="100" r="2.2" fill="#fff"/><circle class="bub" cx="55" cy="108" r="1.6" fill="#fff" style="animation-delay:1s"/><circle class="bub" cx="44" cy="112" r="2" fill="#fff" style="animation-delay:1.9s"/>`:''}
-      </g></g>
+              </g></g>
       <path d="M10 12 H82 L74 120 Q73 126 66 126 H26 Q19 126 18 120 Z" fill="none" stroke="var(--fg)" stroke-opacity=".35" stroke-width="2.5"/>
       ${[.25,.5,.75].map(f=>`<line x1="70" x2="78" y1="${y(f)}" y2="${y(f)}" stroke="var(--fg)" stroke-opacity=".25" stroke-width="1.5"/>`).join('')}
     </svg></div>
@@ -562,7 +563,160 @@ function animateWater(){
   lastWaterPct=Math.min(1,(W().log[today()]||0)/W().goal);
 }
 
-const VIEWS={inicio:vInicio,habitos:vHabitos,dinero:vDinero,claude:vProyectos,semana:vSemana};
+/* ---------- Comunidad: un muro para acompañarse ----------
+   Todo pasa por funciones del servidor (com_*). Nadie ve el nombre ni el correo de otro: solo su apodo. */
+const COM_TEMAS=[['animo','Ánimo'],['logro','Logro'],['habitos','Hábitos'],['plata','Plata'],['tiempo','Tiempo']];
+const COM_TN=Object.fromEntries(COM_TEMAS);
+const COM_RIESGO=/suicid|matarme|me quiero matar|quitarme la vida|no quiero (seguir )?viv|quiero morir|morirme|hacerme da[ñn]o|cortarme|no vale la pena vivir|desaparecer para siempre/i;
+const COM={alias:undefined,feed:null,tema:'',tNew:'animo',open:{},resp:{},menu:'',rep:'',err:false,at:0,mas:true,ayuda:false,busy:false};
+function comReset(){Object.assign(COM,{alias:undefined,feed:null,tema:'',open:{},resp:{},menu:'',rep:'',err:false,at:0,mas:true,ayuda:false})}
+const comErr=e=>{const m=(e&&e.message)||'';return m.includes('limite')?'Llegaste al máximo de hoy. Vuelve mañana.':m.includes('alias_ocupado')?'Ese apodo ya lo usa otra persona.':m.includes('alias_invalido')?'Usa de 2 a 24 letras, números o espacios.':m.includes('no_existe')?'Esa publicación ya no está.':'No se pudo. Revisa tu conexión.'};
+async function comLoad(force){
+  if(COM.busy||(!force&&COM.feed&&Date.now()-COM.at<30000))return;
+  COM.busy=true;const who=me;
+  try{
+    const [a,f]=await Promise.all([COM.alias===undefined||force?sb.rpc('com_mi_alias'):Promise.resolve({data:COM.alias}),sb.rpc('com_feed',{p_tema:COM.tema||null,p_antes:null})]);
+    if(who!==me)return;
+    if(a.error||f.error)throw a.error||f.error;
+    COM.alias=a.data||null;COM.feed=Array.isArray(f.data)?f.data:[];COM.mas=COM.feed.length>=30;COM.err=false;COM.at=Date.now();
+    for(const id of Object.keys(COM.open))if(COM.open[id])comResp(+id);
+  }catch(e){if(who===me){COM.err=true;if(COM.alias===undefined)COM.alias=null;COM.feed=COM.feed||[]}}
+  finally{COM.busy=false;if(who===me&&!ownerMode&&tab==='comunidad')render()}
+}
+async function comMas(){
+  if(!COM.feed||!COM.feed.length)return;
+  const {data,error}=await sb.rpc('com_feed',{p_tema:COM.tema||null,p_antes:COM.feed[COM.feed.length-1].id});
+  if(error)return toast('No se pudo cargar más');
+  COM.feed=COM.feed.concat(data||[]);COM.mas=(data||[]).length>=30;render();
+}
+async function comResp(id){
+  const {data,error}=await sb.rpc('com_respuestas_de',{p_post:id});
+  if(!error){COM.resp[id]=data||[];if(!ownerMode&&tab==='comunidad')render()}
+}
+function comAgo(iso){const s=Math.max(0,(Date.now()-new Date(iso))/1000);
+  return s<60?'recién':s<3600?'hace '+Math.floor(s/60)+' min':s<86400?'hace '+Math.floor(s/3600)+' h':s<604800?'hace '+Math.floor(s/86400)+(s<172800?' día':' días'):new Date(iso).toLocaleDateString('es-CL',{day:'numeric',month:'short'})}
+const comAv=a=>`<span class="av c-av" style="--c:${avCol(a)}" aria-hidden="true">${esc(((a||'?').trim()[0]||'?').toUpperCase())}</span>`;
+function comAyuda(fuerte){return `
+  <div class="card c-ayuda${fuerte?' fuerte':''}" role="${fuerte?'alert':'note'}">
+    <h2>${fuerte?'No tienes que pasarlo solo':'Si lo estás pasando muy mal'}</h2>
+    <p class="note">${fuerte?'Gracias por contarlo. La comunidad te acompaña, y también hay personas preparadas para escucharte ahora mismo, gratis y a cualquier hora.':'Esta comunidad es apoyo entre pares y no reemplaza a un profesional. Hay personas preparadas para escucharte, gratis y a cualquier hora.'}</p>
+    <div class="c-tels"><a class="btn pri" href="tel:*4141">Llamar al *4141</a><a class="btn" href="tel:131">Emergencia: 131</a></div>
+    <p class="note" style="margin-top:8px">*4141 es la línea de prevención del suicidio del Ministerio de Salud. 131 es el SAMU.</p>
+  </div>`}
+function comMenu(tipo,x){
+  const k=tipo+x.id;if(COM.menu!==k)return '';
+  if(COM.rep===k)return `<div class="c-menu" role="group" aria-label="Reportar">
+    <span class="note">¿Qué pasa con esto?</span>
+    ${[['ofensivo','Ofende o ataca'],['riesgo','Alguien está en riesgo'],['datos','Expone datos personales'],['spam','Publicidad o spam'],['otro','Otra cosa']].map(([v,n])=>`<button class="btn sm" type="button" data-crep="${v}" data-ct="${tipo}" data-cid="${+x.id}">${n}</button>`).join('')}
+    <button class="btn sm" type="button" data-cmenu="">Cancelar</button></div>`;
+  return `<div class="c-menu" role="group" aria-label="Opciones">${x.mio
+    ?`<button class="btn sm" type="button" data-cdel="${tipo}" data-cid="${+x.id}">Borrar${COM.del===k?': toca otra vez para confirmar':''}</button>`
+    :`<button class="btn sm" type="button" data-crepo="${k}">Reportar</button><button class="btn sm" type="button" data-cblq="${tipo}" data-cid="${+x.id}">${COM.blq===k?'Toca otra vez: no verás más a '+esc(x.alias):'Bloquear a '+esc(x.alias)}</button>`}
+    <button class="btn sm" type="button" data-cmenu="">Cerrar</button></div>`;
+}
+function comPost(p){
+  const op=!!COM.open[p.id],R=COM.resp[p.id];
+  return `<article class="card c-post" data-cpost="${+p.id}">
+    <header class="c-h">${comAv(p.alias)}<div class="grow"><b>${esc(p.alias)}${p.mio?' <span class="muted">(tú)</span>':''}</b><div class="s muted">${comAgo(p.creado)}</div></div><span class="chip c-tema t-${esc(p.tema)}">${esc(COM_TN[p.tema]||'')}</span></header>
+    <p class="c-t">${esc(p.texto)}</p>
+    <div class="c-acts">
+      <button class="btn sm c-apoyo${p.apoyado?' on':''}" type="button" data-capoyo="${+p.id}" aria-pressed="${!!p.apoyado}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>${p.apoyado?'Te acompaño':'Acompañar'}<span class="num">${+p.apoyos||''}</span></button>
+      <button class="btn sm" type="button" data-cabrir="${+p.id}" aria-expanded="${op}">${+p.respuestas?(+p.respuestas===1?'1 respuesta':+p.respuestas+' respuestas'):'Responder'}</button>
+      <button class="btn sm c-mas" type="button" data-cmenu="post${+p.id}" aria-label="Más opciones">···</button>
+    </div>
+    ${comMenu('post',p)}
+    ${op?`<div class="c-resps">${R?R.map(r=>`<div class="c-r">${comAv(r.alias)}<div class="grow"><div><b>${esc(r.alias)}</b> <span class="s muted">${comAgo(r.creado)}</span></div><p class="c-t">${esc(r.texto)}</p>${comMenu('resp',r)}</div><button class="x" type="button" data-cmenu="resp${+r.id}" aria-label="Opciones de la respuesta">···</button></div>`).join(''):'<div class="note">Cargando…</div>'}
+      <form class="c-rf" data-crf="${+p.id}"><textarea name="t" aria-label="Tu respuesta" maxlength="400" rows="2" required placeholder="Escríbele algo que te habría servido a ti"></textarea><button class="btn pri sm" type="submit">Responder</button></form></div>`:''}
+  </article>`;
+}
+function vComunidad(){
+  if(COM.alias===undefined||!COM.feed){comLoad();return '<div class="skel" aria-label="Cargando la comunidad"><i></i><i></i><i></i></div>'}
+  if(Date.now()-COM.at>30000)setTimeout(()=>comLoad(),0);
+  const intro=`<div class="card c-intro"><h2>Aquí nadie va solo</h2><p class="note">Cuenta cómo vas, celebra un logro o acompaña a alguien que lo está pasando mal. Usas un apodo: nadie ve tu nombre ni tu correo.</p></div>`;
+  if(!COM.alias)return intro+`
+  <form class="card c-alta" id="f-calias">
+    <h2>Antes de entrar</h2>
+    <ul class="c-normas">
+      <li>Trata a los demás como te gustaría que te traten.</li>
+      <li>No compartas teléfonos, direcciones, RUT ni datos de otras personas.</li>
+      <li>Esto es apoyo entre pares. No reemplaza a un médico ni a un psicólogo.</li>
+      <li>Si algo te incomoda, repórtalo o bloquea a esa persona.</li>
+    </ul>
+    <label>Tu apodo en la comunidad<input name="a" maxlength="24" minlength="2" required autocomplete="off" placeholder="Ej: Lobo del sur"></label>
+    <label class="c-ok"><input type="checkbox" name="ok" required> Acepto estas normas</label>
+    <button class="btn pri" type="submit">Entrar a la comunidad</button>
+  </form>`+comAyuda(false);
+  const F=COM.feed;
+  return intro+`
+  ${COM.ayuda?comAyuda(true):''}
+  <form class="card c-new" id="f-cpost">
+    <label class="sr" for="c-txt">Escribe a la comunidad</label>
+    <textarea id="c-txt" name="t" maxlength="600" rows="3" required placeholder="¿Cómo vas hoy, ${esc(COM.alias)}?"></textarea>
+    <div class="c-temas" role="radiogroup" aria-label="Tema">${COM_TEMAS.map(([v,n])=>`<button type="button" role="radio" aria-checked="${COM.tNew===v}" class="${COM.tNew===v?'on':''}" data-ctnew="${v}">${n}</button>`).join('')}</div>
+    <button class="btn pri" type="submit">Publicar</button>
+  </form>
+  <div class="sec">
+    <div class="sec-h"><h3>Lo que cuenta la gente</h3>${COM.err?'<span class="note">Sin conexión</span>':''}</div>
+    <div class="seg c-fil scroll-x" role="tablist" aria-label="Filtrar por tema"><button type="button" role="tab" aria-selected="${!COM.tema}" class="${!COM.tema?'on':''}" data-ctema="">Todo</button>${COM_TEMAS.map(([v,n])=>`<button type="button" role="tab" aria-selected="${COM.tema===v}" class="${COM.tema===v?'on':''}" data-ctema="${v}">${n}</button>`).join('')}</div>
+    <div class="grid c-feed">${F.length?F.map(comPost).join(''):`<div class="empty">${COM.tema?'Nadie ha escrito de esto todavía.':'Todavía no hay nada. Sé la primera persona en contar cómo va.'}</div>`}</div>
+    ${COM.mas&&F.length?'<button class="btn" type="button" data-cmas style="margin:12px auto 0;display:flex">Ver más</button>':''}
+  </div>
+  ${comAyuda(false)}
+  <p class="note c-pie">Con 3 reportes, una publicación se esconde sola hasta que la revisemos. <button class="lnk" type="button" data-cdesbloq>Desbloquear a todos</button></p>`;
+}
+document.addEventListener('click',async e=>{
+  if(!me||ownerMode||tab!=='comunidad')return;
+  const t=e.target.closest('button');if(!t)return;const d=t.dataset;
+  if(d.ctnew){COM.tNew=d.ctnew;t.parentElement.querySelectorAll('button').forEach(b=>{const on=b===t;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});return}
+  if(d.ctema!==undefined){if(COM.tema===d.ctema)return;COM.tema=d.ctema;COM.feed=null;COM.open={};render();comLoad(true);return}
+  if(d.cmas!==undefined){t.disabled=true;comMas();return}
+  if(d.cmenu!==undefined){COM.menu=COM.menu===d.cmenu?'':d.cmenu;COM.rep='';COM.del='';COM.blq='';render();return}
+  if(d.crepo){COM.rep=d.crepo;render();return}
+  if(d.cabrir){const id=+d.cabrir;COM.open[id]=!COM.open[id];render();if(COM.open[id]){comResp(id);setTimeout(()=>{const f=document.querySelector(`[data-crf="${id}"] textarea`);f&&f.focus({preventScroll:true})},60)}return}
+  if(d.capoyo){const id=+d.capoyo,p=COM.feed.find(x=>+x.id===id);if(!p)return;
+    p.apoyado=!p.apoyado;p.apoyos=Math.max(0,(+p.apoyos||0)+(p.apoyado?1:-1));render();
+    const {error}=await sb.rpc('com_apoyar',{p_post:id});
+    if(error){p.apoyado=!p.apoyado;p.apoyos=Math.max(0,p.apoyos+(p.apoyado?1:-1));render();toast(comErr(error))}else if(p.apoyado)toast(p.mio?'Te diste ánimo':'Le hiciste saber que no va sola');return}
+  if(d.crep){const {error}=await sb.rpc('com_reportar',{p_tipo:d.ct,p_id:+d.cid,p_motivo:d.crep});
+    COM.menu='';COM.rep='';render();toast(error?comErr(error):'Gracias. Lo vamos a revisar');
+    if(!error&&d.crep==='riesgo'){COM.ayuda=true;render()}return}
+  if(d.cdel){const k=d.cdel+d.cid;if(COM.del!==k){COM.del=k;render();return}
+    const {error}=await sb.rpc('com_borrar',{p_tipo:d.cdel,p_id:+d.cid});COM.menu='';COM.del='';
+    if(error)return toast(comErr(error));
+    if(d.cdel==='post')COM.feed=COM.feed.filter(x=>+x.id!==+d.cid);else for(const id in COM.resp){const n=COM.resp[id].length;COM.resp[id]=COM.resp[id].filter(r=>+r.id!==+d.cid);if(n!==COM.resp[id].length){const p=COM.feed.find(x=>+x.id===+id);if(p)p.respuestas=Math.max(0,p.respuestas-1)}}
+    render();toast('Borrado');return}
+  if(d.cblq){const k=d.cblq+d.cid;if(COM.blq!==k){COM.blq=k;render();return}
+    const {error}=await sb.rpc('com_bloquear',{p_tipo:d.cblq,p_id:+d.cid});COM.menu='';COM.blq='';
+    if(error)return toast(comErr(error));toast('Listo. No verás más a esa persona');comLoad(true);return}
+  if(d.cdesbloq!==undefined){if(!t.dataset.ok){t.dataset.ok=1;t.textContent='Toca otra vez para confirmar';return}
+    const {data,error}=await sb.rpc('com_desbloquear_todos');toast(error?comErr(error):data?'Desbloqueaste a '+data+(data===1?' persona':' personas'):'No tenías a nadie bloqueado');if(!error)comLoad(true);return}
+});
+document.addEventListener('submit',async e=>{
+  const f=e.target;if(!me||!f.matches('#f-calias,#f-cpost,[data-crf]'))return;
+  e.preventDefault();const b=f.querySelector('[type=submit]');if(b.disabled)return;b.disabled=true;
+  try{
+    if(f.id==='f-calias'){
+      const {data,error}=await sb.rpc('com_set_alias',{p_alias:f.a.value.trim()});
+      if(error)return toast(comErr(error));COM.alias=data;render();toast('Bienvenido a la comunidad');return}
+    const txt=f.t.value.trim();if(!txt)return;
+    if(f.id==='f-cpost'){
+      const {data,error}=await sb.rpc('com_publicar',{p_tema:COM.tNew,p_texto:txt});
+      if(error)return toast(comErr(error));
+      COM.ayuda=COM_RIESGO.test(txt);
+      if(COM.tema&&COM.tema!==COM.tNew)COM.tema='';
+      COM.feed=[{id:data,tema:COM.tNew,texto:txt,creado:new Date().toISOString(),alias:COM.alias,mio:true,apoyos:0,apoyado:false,respuestas:0},...COM.feed.filter(x=>+x.id!==+data)];
+      render();toast('Publicado');return}
+    const id=+f.dataset.crf;
+    const {data,error}=await sb.rpc('com_responder',{p_post:id,p_texto:txt});
+    if(error)return toast(comErr(error));
+    if(COM_RIESGO.test(txt))COM.ayuda=true;
+    (COM.resp[id]=COM.resp[id]||[]).push({id:data,texto:txt,creado:new Date().toISOString(),alias:COM.alias,mio:true});
+    const p=COM.feed.find(x=>+x.id===id);if(p)p.respuestas=(+p.respuestas||0)+1;
+    render();toast('Respondiste');
+  }finally{b.disabled=false}
+});
+
+const VIEWS={inicio:vInicio,habitos:vHabitos,dinero:vDinero,claude:vProyectos,semana:vSemana,comunidad:vComunidad};
 let loadingView=false,revealIO=null;const prevCount={};
 function renderHead(){
   const d=new Date();
@@ -574,7 +728,7 @@ function renderHead(){
 }
 function render(){
   if(!me)return;
-  syncAreas();renderHead();
+  syncAreas();renderHead();document.body.classList.toggle('en-com',!ownerMode&&tab==='comunidad');
   const v=$('#view');
   if(revealIO){revealIO.disconnect();revealIO=null}
   if(loadingView){v.innerHTML='<div class="skel" aria-label="Cargando tus datos"><i></i><i></i><i></i></div>';return}
@@ -599,7 +753,7 @@ function reveal(v){
   revealIO=new IntersectionObserver((ents,obs)=>{
     const now=performance.now();if(now-last>160)n=0;last=now;
     for(const en of ents){if(!en.isIntersecting)continue;const el=en.target;obs.unobserve(el);
-      el.style.setProperty('--rd',Math.min(n++,9)*60+'ms');el.classList.add('in','seen');
+      el.style.setProperty('--rd',Math.min(n++,7)*40+'ms');el.classList.add('in','seen');
       el.querySelectorAll('[data-count]').forEach(c=>countUp(c,0,+c.dataset.count));
       el.addEventListener('animationend',function done(ev){if(ev.target!==el)return;el.classList.remove('rv','in');el.style.removeProperty('--rd');el.removeEventListener('animationend',done)});
     }
@@ -611,7 +765,7 @@ const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches
 function countUp(el,from,to){
   if(RM||!isFinite(to)||!isFinite(from)||from===to)return;const k=el.dataset.kind||'int';
   const f=v=>k==='pct'?Math.round(v)+'%':k==='clp'?clp(v):k==='usd'?usd(v):k==='lt'?(v/1000).toLocaleString('es-CL',{maximumFractionDigits:2})+' L':String(Math.round(v));
-  const t0=performance.now(),dur=Math.min(1100,600+Math.abs(to-from)*2),tok=el._cu=(el._cu||0)+1;
+  const t0=performance.now(),dur=Math.min(600,300+Math.abs(to-from)),tok=el._cu=(el._cu||0)+1;
   (function step(t){if(el._cu!==tok)return;const q=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-q,3);el.textContent=f(from+(to-from)*e);if(q<1)requestAnimationFrame(step);else el.textContent=f(to)})(t0);
 }
 /* Texto que sale volando desde un elemento: +20 XP, +250 ml */
@@ -634,10 +788,10 @@ const FX=(()=>{let cv,cx,parts=[],raf=0;
   const run=()=>{if(!raf)raf=requestAnimationFrame(loop)};
   return{
     burst(x,y,c,n=18){if(RM)return;ensure();for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,v=2+Math.random()*4.5;parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.5,g:.2,s:4+Math.random()*5,c,rot:0,vr:(Math.random()-.5)*.4,life:40+Math.random()*25,circle:Math.random()<.5})}run()},
-    rain(){if(RM)return;ensure();const cols=['#D3263A','#2155D6','#15897A','#C77A00','#8A3FD1','#1E90D6','#F4F4F2'];
+    rain(){if(RM)return;ensure();const cols=['#C8372D','#2F5DA8','#2B5C4E','#F0C23A','#7B4BA0','#2477B3','#F1ECE9'];
       for(let i=0;i<150;i++)parts.push({x:Math.random()*vw(),y:-20-Math.random()*vh()*.6,vx:(Math.random()-.5)*3,vy:2+Math.random()*3,g:.05,s:6+Math.random()*7,c:cols[i%cols.length],rot:Math.random()*6,vr:(Math.random()-.5)*.3,life:170+Math.random()*90});run()}
   }})();
-function burstAt(sel){const el=document.querySelector(sel);if(!el)return;const r=el.getBoundingClientRect();FX.burst(r.left+r.width/2,r.top+r.height/2,getComputedStyle(el).borderTopColor||'#D3263A')}
+function burstAt(sel){const el=document.querySelector(sel);if(!el)return;const r=el.getBoundingClientRect();FX.burst(r.left+r.width/2,r.top+r.height/2,getComputedStyle(el).borderTopColor||'#C8372D')}
 function safeUrl(u){return /^https?:\/\//i.test(String(u||'').trim())?String(u).trim().slice(0,500):''}
 const num=v=>{const s=String(v||'').replace(/\s|\$/g,'');if(/,\d{1,2}$/.test(s))return parseFloat(s.replace(/\./g,'').replace(',','.'));return parseFloat(s.replace(/[.,](?=\d{3}(\D|$))/g,'').replace(',','.'))||0};
 
@@ -670,7 +824,7 @@ const LINKS=[
 ];
 const DOLOR={habitos:'Sus hábitos',plata:'Su plata',tiempo:'Su tiempo',todo:'Todo junto',sin:'Sin responder'};
 const PAGA={si:'Sí',quizas:'Quizás',no:'No',sin:'Sin responder'};
-const AV_COL=['#E0283E','#2B5CE6','#0F9D7A','#D98A00','#8A3FD1','#1E90D6','#E85D9A'];
+const AV_COL=['#C8372D','#2F5DA8','#1E7A72','#A86B12','#7B4BA0','#2477B3','#55697A'];
 const avCol=id=>{let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;return AV_COL[h%AV_COL.length]};
 const initial=u=>esc(((u.nombre||u.email||'?').trim()[0]||'?').toUpperCase());
 const mailto=(to,subject,body)=>'mailto:'+encodeURIComponent(to||'').replace(/%40/g,'@')+'?subject='+encodeURIComponent(subject)+(body?'&body='+encodeURIComponent(body):'');
@@ -732,7 +886,7 @@ function leaveOwner(){
   drawTabs();render();window.scrollTo(0,0);ownerBadges();
 }
 function ownerReset(){
-  owner=false;ownerMode=false;projOk=false;TABS=userTabs();odUser=null;odQ='';odFil='pend';
+  owner=false;ownerMode=false;projOk=false;TABS=userTabs();odUser=null;odQ='';odFil='pend';comReset();comRep=null;
   for(const o of [OD,odBusy,odErr,odAt])for(const k in o)delete o[k];
   document.body.classList.remove('owner','is-owner');
   const s=$('#od-sheet');if(s){s.hidden=true;$('#od-body').innerHTML=''}
@@ -798,18 +952,36 @@ function vOUsuarios(){
   <div class="card" style="margin-top:12px"><div class="list" id="od-list">${odUserRows()}</div></div>
   <div class="note" style="margin-top:10px;text-align:center">Ves los datos de cada cuenta y lo que respondió al registrarse. Lo que anota en la app es solo suyo.</div>`;
 }
+/* Reportes de la comunidad: el dueño decide si queda a la vista o se esconde */
+let comRep=null,comRepAt=0,comRepBusy=false;
+async function comRepLoad(){const who=me;const {data,error}=await sb.rpc('dueno_com_reportes');if(who!==me)return;comRep=error?[]:(data||[]);comRepAt=Date.now();if(ownerMode&&tab==='d-mensajes')render()}
+function comRepHTML(){
+  if(!comRepBusy&&(!comRep||Date.now()-comRepAt>60000)){comRepBusy=true;setTimeout(()=>comRepLoad().finally(()=>{comRepBusy=false}),0)}
+  if(!comRep||!comRep.length)return '';
+  const M={ofensivo:'Ofende',riesgo:'Persona en riesgo',datos:'Datos personales',spam:'Spam',otro:'Otro'};
+  return `<div class="card od-com"><h2>Reportado en la comunidad <span class="chip num">${comRep.length}</span></h2>${comRep.map(r=>`
+    <div class="od-ci"><div class="od-mh">${comAv(r.alias||'?')}<div class="grow"><b style="display:block">${esc(r.alias||'Alguien')}</b><div class="s muted">${r.tipo==='post'?'Publicación':'Respuesta'} · ${+r.n} ${+r.n===1?'reporte':'reportes'} · ${esc((r.motivos||[]).map(m=>M[m]||m).join(', '))}</div></div>${r.oculto?'<span class="chip">Escondido</span>':'<span class="chip od-new">A la vista</span>'}</div>
+    <p class="c-t">${esc(r.texto)}</p>
+    <div class="od-ma"><button class="btn sm" type="button" data-ocm="0" data-ct="${esc(r.tipo)}" data-cid="${+r.id}">${r.oculto?'Volver a mostrar':'Dejar a la vista'}</button><button class="btn sm pri" type="button" data-ocm="1" data-ct="${esc(r.tipo)}" data-cid="${+r.id}">${r.oculto?'Mantener escondido':'Esconder'}</button></div></div>`).join('')}</div>`;
+}
+document.addEventListener('click',async e=>{
+  const t=e.target.closest('[data-ocm]');if(!t||!owner)return;t.disabled=true;
+  const {error}=await sb.rpc('dueno_com_moderar',{p_tipo:t.dataset.ct,p_id:+t.dataset.cid,p_oculto:t.dataset.ocm==='1'});
+  if(error){t.disabled=false;return toast('No se pudo. Revisa tu conexión')}
+  comRep=comRep.filter(r=>!(r.tipo===t.dataset.ct&&+r.id===+t.dataset.cid));render();toast(t.dataset.ocm==='1'?'Escondido':'Queda a la vista');COM.at=0;
+});
 function vOMensajes(){
   if(!OD.mensajes)return odWait('mensajes');
   const L=OD.mensajes,pend=L.filter(m=>!m.atendido).length;
   const show=L.filter(m=>odFil==='all'||(odFil==='pend'?!m.atendido:m.atendido));
-  return `
+  return comRepHTML()+`
   <div class="seg od-seg" role="tablist"><button type="button" data-od="fil" data-v="pend" class="${odFil==='pend'?'on':''}">Pendientes${pend?` <span class="cnt num">${pend}</span>`:''}</button><button type="button" data-od="fil" data-v="done" class="${odFil==='done'?'on':''}">Atendidos</button><button type="button" data-od="fil" data-v="all" class="${odFil==='all'?'on':''}">Todos</button></div>
   <div class="grid" style="margin-top:12px">${show.length?show.map(m=>{const who=m.nombre||m.email;const pw=/contraseñ/i.test(m.mensaje);return `
     <div class="card od-msg${m.atendido?' done':''}">
       <div class="od-mh"><span class="av" style="--c:${avCol(m.email)}">${initial(m)}</span><div class="grow"><b class="od-mail" style="display:block">${esc(who)}</b>${m.nombre?`<div class="s muted od-mail">${esc(m.email)}</div>`:''}<div class="s muted">${rel(m.creado)}${m.cuenta?'':' · escribió sin entrar'}</div></div>${m.atendido?'<span class="chip" style="color:var(--ok)">Atendido</span>':'<span class="chip od-new">Nuevo</span>'}</div>
       <p class="od-mt">${esc(m.mensaje)}</p>
       <div class="od-ma"><a class="btn sm pri" href="${esc(mailto(m.email,pw?'Tu cuenta en Mi Esquina':'Re: tu mensaje a Mi Esquina','Hola'+(m.nombre?' '+m.nombre.split(' ')[0]:'')+',\n\n'))}">Responder por correo</a><button class="btn sm" type="button" data-od="done" data-id="${+m.id}" data-v="${m.atendido?'0':'1'}">${m.atendido?'Volver a pendiente':'Marcar atendido'}</button></div>
-    </div>`}).join(''):`<div class="empty">${odFil==='pend'?'No hay mensajes por responder. 👊':'No hay mensajes aquí.'}</div>`}</div>`;
+    </div>`}).join(''):`<div class="empty">${odFil==='pend'?'No hay mensajes por responder.':'No hay mensajes aquí.'}</div>`}</div>`;
 }
 function vOHerr(){
   const est=OD.estado;if(!odErr.estado)odLoad('estado');if(!odErr.resumen)odLoad('resumen');if(!odErr.cobros)odLoad('cobros');
@@ -885,7 +1057,7 @@ const OVIEWS={'d-resumen':vOResumen,'d-usuarios':vOUsuarios,'d-mensajes':vOMensa
 function odSheetHTML(u){
   return `
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-    <div style="display:flex;gap:14px;align-items:center;min-width:0"><span class="av lg" style="--c:${avCol(u.id)}">${initial(u)}</span><div style="min-width:0"><b class="disp" style="font-size:26px;text-transform:uppercase;display:block;line-height:1.05;overflow-wrap:anywhere">${esc(u.nombre||'Sin nombre')}</b><div class="muted od-mail" style="font-size:14px">${esc(u.email)}</div></div></div>
+    <div style="display:flex;gap:14px;align-items:center;min-width:0"><span class="av lg" style="--c:${avCol(u.id)}">${initial(u)}</span><div style="min-width:0"><b class="disp" style="font-size:26px;display:block;line-height:1.1;overflow-wrap:anywhere">${esc(u.nombre||'Sin nombre')}</b><div class="muted od-mail" style="font-size:14px">${esc(u.email)}</div></div></div>
     <button type="button" class="x" data-od="close" aria-label="Cerrar">×</button></div>
   ${u.suspendida?'<div class="od-warn">Cuenta suspendida: no puede entrar hasta que la reactives. Sus datos siguen guardados.</div>':''}
   <div class="list od-kv">
@@ -979,11 +1151,9 @@ $('#od-sheet').addEventListener('click',e=>{if(e.target.id==='od-sheet')closeOdS
 dragToClose($('#od-sheet'),closeOdSheet);
 
 /* ---------- eventos de la app ---------- */
-/* Onda bajo el dedo y un pulso corto de vibración (en Android) en cada botón */
+/* Un pulso corto de vibración (en Android) en cada botón; el botón ya baja a 0,97 por CSS */
 document.addEventListener('pointerdown',e=>{
   const b=e.target.closest('.btn,.habit,nav.tabs button,.cats button,.picks button,.seg button,.gear,.fab');if(!b||b.disabled||b.closest('#alarm'))return;
-  if(!RM){const r=b.getBoundingClientRect(),z=Math.max(r.width,r.height)*2.2,sp=document.createElement('span');sp.className='rip';
-    sp.style.cssText=`width:${z}px;height:${z}px;left:${e.clientX-r.left-z/2}px;top:${e.clientY-r.top-z/2}px`;b.appendChild(sp);setTimeout(()=>sp.remove(),600)}
   try{navigator.vibrate&&navigator.vibrate(8)}catch(err){}
 },{passive:true});
 /* Al bajar aparece la barra compacta y el botón de gasto se achica; al subir vuelve */
@@ -1015,12 +1185,12 @@ document.addEventListener('click',e=>{
     if(log[k][ds.hab]){delete log[k][ds.hab];if(!Object.keys(log[k]).length)delete log[k];const id=ds.hab;celebrate=()=>{const b=document.querySelector(`[data-hab="${CSS.escape(id)}"]`);if(b)b.classList.add('unpop')}}
     else{const before=beltFor(totalXP());log[k][ds.hab]=h.pts;const after=beltFor(totalXP());
       const big=after.i>before.i||after.stripes>before.stripes||dayRatio(k)>=1;
-      toast(after.i>before.i?'¡Nuevo cinturón: '+after.b.n+'!':after.stripes>before.stripes?'¡Nuevo grado!':dayRatio(k)>=1?'Round perfecto 🥊':'+'+h.pts+' XP');
-      const id=ds.hab,pts=h.pts;celebrate=()=>{const sel=`[data-hab="${CSS.escape(id)}"]`,b=document.querySelector(sel);if(b)b.classList.add('pop');burstAt(sel+' .ck');flyAt(sel+' .pts','+'+pts+' XP');if(big)FX.rain()}}
+      toast(after.i>before.i?'¡Nuevo cinturón: '+after.b.n+'!':after.stripes>before.stripes?'¡Nuevo grado!':dayRatio(k)>=1?'Round perfecto':'+'+h.pts+' XP');
+      const id=ds.hab,pts=h.pts;celebrate=()=>{const sel=`[data-hab="${CSS.escape(id)}"]`,b=document.querySelector(sel);if(b)b.classList.add('pop');flyAt(sel+' .pts','+'+pts+' XP');if(big)FX.rain()}}
     save('habits');render();return;
   }
   if(ds.water){const k=today(),w=W(),before=w.log[k]||0;if(+ds.water>0)coachDrank();const nv=Math.max(0,before+(+ds.water));if(nv)w.log[k]=nv;else delete w.log[k];
-    if(before<w.goal&&nv>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');celebrate=()=>FX.rain()}else if(+ds.water>0){toast('+'+ds.water+' ml');const ml=ds.water;celebrate=()=>{burstAt('#glass svg path');flyAt('#glass','+'+ml+' ml','var(--water)')}}
+    if(before<w.goal&&nv>=w.goal){toast('¡Meta de agua cumplida! +'+WATER_XP+' XP');celebrate=()=>FX.rain()}else if(+ds.water>0){toast('+'+ds.water+' ml');const ml=ds.water;celebrate=()=>{flyAt('#glass','+'+ml+' ml','var(--water)')}}
     save('habits');render();const g=document.getElementById('glass');if(g){g.classList.add('splash')}return}
   if(ds.copy){const el=document.getElementById(ds.copy),txt=el?el.textContent:'';
     const ok=()=>toast('Enlace copiado');const fb=()=>{try{const r=document.createRange();r.selectNodeContents(el);const sel=getSelection();sel.removeAllRanges();sel.addRange(r)}catch(e){}toast('Mantén presionado para copiar')};
@@ -1172,9 +1342,9 @@ function startChallenge(src){
 }
 function drawChallenge(){
   const el=$('#alarm'),n=ch.count||0;el.className='overlay ringing';
-  el.innerHTML=`<div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800">${ch.src==='test'?'Prueba del reto':'¡Arriba'+(firstName()?', '+esc(firstName()):'')+'!'}</div>
+  el.innerHTML=`<div style="font-size:15px;font-weight:500">${ch.src==='test'?'Prueba del reto':'¡Arriba'+(firstName()?', '+esc(firstName()):'')+'!'}</div>
     <div class="count num" id="a-count">${n}</div>
-    <div style="font-family:var(--display);font-size:28px;text-transform:uppercase">de 10 ${ch.ex}</div>
+    <div style="font-size:26px;font-weight:300">de 10 ${ch.ex}</div>
     <div class="dots">${[...Array(10)].map((_,i)=>`<i class="${i<n?'on':''}"></i>`).join('')}</div>
     <div class="how">${exHow(ch.ex)}</div>
     <div id="a-msg" style="min-height:22px;font-weight:800"></div>
@@ -1967,7 +2137,7 @@ $('#plans').addEventListener('click',async e=>{
 dragToClose($('#plans'),closePlans);
 /* ---- tarjeta en Inicio ---- */
 function planCard(){
-  const p=PL;if(!p||!p.cobro||p.motivo==='dueno'||p.motivo==='libre')return '';
+  const p=PL;if(owner||!p||!p.cobro||p.motivo==='dueno'||p.motivo==='libre')return '';
   const pend=payPending();
   if(p.motivo==='sin'){
     if(p.modo==='basico')return `<div class="card pl-card warn"><div class="eyebrow">Plan</div><div class="pl-ct">Tu prueba del instructor terminó</div><div class="note">Hábitos, plata y semana siguen gratis. El instructor y sus avisos vuelven con un plan.</div><div class="co-btns"><button class="btn red" type="button" data-planes>Ver planes</button>${pend?'<button class="btn" type="button" data-pay-check>Ya pagué</button>':''}</div></div>`;
@@ -1984,7 +2154,8 @@ function planCard(){
 /* ---- sección en Ajustes ---- */
 function planSettings(){
   const p=PL;
-  if(!p||(!p.cobro&&!owner))return '<div id="set-plan" hidden></div>';
+  // El dueño no ve planes ni cobros en su propia app: eso vive solo en su panel
+  if(owner||!p||!p.cobro)return '<div id="set-plan" hidden></div>';
   let line,btns='';
   if(!p.cobro)line='El cobro está apagado: todos usan la app gratis. Lo enciendes en tu panel, en Cobros.';
   else if(p.motivo==='dueno')line='Eres el dueño: tienes todo sin pagar.';
@@ -2014,7 +2185,7 @@ const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator
 function openSettings(focus){
   const cd=S.meta.countdown||{};
   $('#set-body').innerHTML=`
-  <div style="display:flex;justify-content:space-between;align-items:center"><b class="disp" style="font-size:28px;text-transform:uppercase">Ajustes</b><button type="button" class="x" data-close-set aria-label="Cerrar">×</button></div>
+  <div style="display:flex;justify-content:space-between;align-items:center"><b class="disp" style="font-size:30px">Ajustes</b><button type="button" class="x" data-close-set aria-label="Cerrar">×</button></div>
   ${owner?`<div class="set-sec"><h4>Dueño</h4><button class="btn red" type="button" data-owner-open style="justify-self:start">${ICON_CROWN} Abrir el panel del dueño</button><div class="note">Solo tu cuenta ve este botón.</div></div>`:''}
   ${planSettings()}
   <div class="set-sec"><h4>Tu perfil</h4>
