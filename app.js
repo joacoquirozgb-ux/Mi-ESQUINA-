@@ -75,7 +75,7 @@ function defaults(){
       {id:'h5',name:'Tiempo de calidad con los míos',area:'familia',pts:25},
       {id:'h6',name:'Anotar los gastos del día',area:'empresa',pts:10},
       {id:'h7',name:'Dormir 7 horas o más',area:'salud',pts:15}
-    ],log:{},water:{goal:2000,log:{}},wake:{}},
+    ],log:{},water:{goal:2000,log:{}},wake:{},rutina:{on:null,log:{}}},
     money:{tx:[],budgets:{},merchants:{}},
     claude:{projects:[],subs:[],usage:[],rate:950},
     week:{blocks:[],done:{}},
@@ -104,7 +104,11 @@ function clean(doc,v){
     const log={};for(const [k,d] of Object.entries(obj(v.log)))if(isDate(k)){const o={};for(const [id,p] of Object.entries(obj(d)))o[sid(id)]=Math.max(0,Math.min(100,nn(p)));if(Object.keys(o).length)log[k]=o}
     const w=obj(v.water),wl={};for(const [k,ml] of Object.entries(obj(w.log)))if(isDate(k)&&nn(ml)>0)wl[k]=Math.min(20000,nn(ml));
     const wake={};for(const [k,x0] of Object.entries(obj(v.wake)))if(isDate(k)){const x=obj(x0);wake[k]={at:isHM(x.at)?x.at:'00:00',secs:Math.max(0,nn(x.secs)),ex:x.ex==='sentadillas'?'sentadillas':'flexiones',reps:arr(x.reps).slice(0,20).map(nn),avg:nn(x.avg),cons:nn(x.cons),late:x.late==null?null:nn(x.late)}}
-    return {list,log,water:{goal:Math.min(10000,Math.max(500,nn(w.goal)||2000)),log:wl},wake};
+    // Rutina de ejercicio: on true/false (null = aún no decide) y los ejercicios marcados por día, últimos 120 días
+    const r0=obj(v.rutina),rlog={},rlim=addDays(today(),-120);
+    for(const [k,d] of Object.entries(obj(r0.log)))if(isDate(k)&&k>=rlim){const o={};for(const [i,x] of Object.entries(obj(d)).slice(0,20))if(/^\d{1,2}$/.test(i)&&x)o[i]=1;if(Object.keys(o).length)rlog[k]=o}
+    const rutina={on:r0.on===true?true:r0.on===false?false:null,log:rlog};
+    return {list,log,water:{goal:Math.min(10000,Math.max(500,nn(w.goal)||2000)),log:wl},wake,rutina};
   }
   if(doc==='money'){
     const tx=arr(v.tx).slice(0,20000).filter(t=>t&&typeof t==='object'&&isDate(t.date)&&nn(t.amt)>0).map(t=>({id:sid(t.id),type:t.type==='ingreso'?'ingreso':'gasto',amt:nn(t.amt),cat:catFix(t.cat),date:t.date,note:str(t.note,120)}));
@@ -314,6 +318,7 @@ function vInicio(){
       </div>
     </div>
   </div>
+  ${rxOn()||projOk&&RX().on===null?`<div style="margin-top:12px">${rutinaCard('inicio')}</div>`:''}
   <div style="margin-top:12px">${waterCard()}</div>
   <div class="grid g3${projOk?'':' n4'}" style="margin-top:12px">
     <div class="card tint" style="--c:var(--red)"><h2>Racha</h2><div class="flame num" data-count="${st}" data-ck="racha">${st}</div><div class="note">${st===1?'día con la mitad o más':'días seguidos con la mitad o más'}</div></div>
@@ -363,6 +368,7 @@ function vHabitos(){
     <div class="note" style="margin-top:8px">Cada hábito suma XP. Cinco grados por cinturón: blanco, azul, morado, marrón y negro. ${bi.next?`Te faltan <b class="num">${bi.left.toLocaleString('es-CL')} XP</b> para ${bi.next.n.toLowerCase()}.`:''}</div>
   </div>
   <div class="sec">
+    ${rutinaCard('habitos')}
     ${waterCard()}
     ${wakeHistory()}
     <div class="sec-h"><h3>Hoy</h3><span class="muted num">${H().list.filter(h=>doneOn(k)[h.id]).length}/${H().list.length} hechos</span></div>
@@ -531,6 +537,122 @@ function vSemana(){
 
 /* ---------- agua ---------- */
 let lastWaterPct=null;
+/* ---------- rutina de ejercicio ----------
+   Lunes a sábado, domingo descanso. Fuerza, músculo y estética, con trabajo para tendones
+   (isométricos y bajadas lentas). Cada día completo marca el hábito "Entrenar" y suma su XP. */
+const RX_HAB='rx';
+const RX_CAL='8 min: 2 min de trote o saltos suaves, círculos de hombros, cadera y tobillos, 10 sentadillas sin peso, 10 flexiones de escápula y 1 serie liviana del primer ejercicio.';
+const RX_DIAS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const RUTINA=[
+  {t:'Empuje',c:'Empuje',s:'Pecho, hombros y tríceps',min:60,ex:[
+    ['Press de banca con mancuernas o barra','4 × 6–8','Bajada en 3 s. Descansa 2 min.'],
+    ['Press militar de pie con mancuernas','3 × 8–10','Glúteos y abdomen apretados.'],
+    ['Fondos en paralelas o en banco','3 × 8–12','Bajada en 3 s, sin rebotar abajo.'],
+    ['Aperturas inclinadas con mancuernas','3 × 12–15','Codos un poco doblados.'],
+    ['Extensión de tríceps sobre la cabeza','3 × 10–12','Estira completo arriba.'],
+    ['Rotación externa con banda','3 × 15','Tendones del hombro. Lento y sin dolor.'],
+    ['Plancha','3 × 40 s','Cuerpo recto, respira.']]},
+  {t:'Piernas',c:'Piernas',s:'Cuádriceps, rodillas y tobillos',min:60,ex:[
+    ['Sentadilla goblet o con barra','4 × 6–8','Bajada en 3 s. Descansa 2 min.'],
+    ['Zancada búlgara','3 × 8 por pierna','Rodilla en línea con el pie.'],
+    ['Sentadilla española con banda (isométrica)','4 × 45 s','Tendón de la rótula. Sube 5 s por semana hasta 60 s.'],
+    ['Bajada lenta desde cajón (step-down)','3 × 10 por pierna','Bajada en 4 s, controlando la rodilla.'],
+    ['Elevación de talones de pie','4 × 12','Pausa 2 s arriba y bajada en 3 s. Tendón de Aquiles.'],
+    ['Elevación de tibiales contra la pared','3 × 20','Protege la canilla y el tobillo.'],
+    ['Dead bug','3 × 10 por lado','Espalda baja pegada al suelo.']]},
+  {t:'Tirón',c:'Tirón',s:'Espalda, bíceps y agarre',min:60,ex:[
+    ['Dominadas (con banda si hace falta)','4 × 5–8','Bajada en 3 s. Descansa 2 min.'],
+    ['Remo con mancuerna a una mano','3 × 8–10 por lado','Lleva el codo hacia la cadera.'],
+    ['Face pull o remo invertido','3 × 12–15','Postura y hombros sanos.'],
+    ['Curl de bíceps con mancuernas','3 × 10–12','Bajada en 3 s.'],
+    ['Curl martillo','3 × 10–12','Antebrazo y codo.'],
+    ['Colgarte de la barra','3 × 30–45 s','Agarre y tendones del hombro.'],
+    ['Extensión de muñeca lenta con mancuerna liviana','3 × 15','Bajada en 4 s. Previene el codo de tenista.']]},
+  {t:'Hombros y brazos',c:'Brazos',s:'Estética del tren superior',min:55,ex:[
+    ['Press Arnold','3 × 8–10','Controla todo el recorrido.'],
+    ['Elevaciones laterales','4 × 12–15','Peso liviano, sin balancear.'],
+    ['Elevaciones posteriores (pájaro)','3 × 15','Hombro trasero y postura.'],
+    ['Curl inclinado + extensión de tríceps con banda','3 × 12 cada uno','Superserie, sin descanso entre los dos.'],
+    ['Flexión de muñeca lenta con mancuerna liviana','3 × 15','Bajada en 4 s. Previene el codo de golfista.'],
+    ['Rotación externa isométrica contra la pared','3 × 30 s','Empuja suave, sin dolor.'],
+    ['Rueda abdominal o elevación de piernas colgado','3 × 10','Sin arquear la espalda.']]},
+  {t:'Posterior',c:'Glúteos',s:'Isquiotibiales, glúteos y core',min:60,ex:[
+    ['Peso muerto rumano','4 × 6–8','Bajada en 3 s, espalda neutra. Descansa 2 min.'],
+    ['Hip thrust','3 × 10','Pausa 1 s arriba.'],
+    ['Curl nórdico (ayúdate con las manos)','3 × 4–6','Bajada lo más lenta que puedas. Tendón isquiotibial.'],
+    ['Plancha Copenhague','3 × 20 s por lado','Aductores e ingle.'],
+    ['Elevación de talones a una pierna','3 × 10 por pierna','Bajada en 3 s.'],
+    ['Paseo del granjero','4 × 30 m','Pesado, postura alta. Agarre y core.'],
+    ['Pallof press con banda','3 × 10 por lado','Que la banda no te gire.']]},
+  {t:'Atlético',c:'Atlético',s:'Cuerpo completo y movilidad, más liviano',min:45,ex:[
+    ['Saltos al cajón o saltos largos','4 × 4','Calidad, descanso completo, cae suave.'],
+    ['Flexiones con pausa abajo','3 × máximo menos 2','Pausa de 1 s con el pecho cerca del suelo.'],
+    ['Sentadilla goblet con pausa','3 × 10','Pausa de 2 s abajo.'],
+    ['Remo invertido','3 × 10','Cuerpo recto como plancha.'],
+    ['Swing con mancuerna o kettlebell','3 × 15','La fuerza sale de la cadera.'],
+    ['Circuito de tendones: tibiales, rotación externa y Copenhague','2 vueltas','Liviano, para que los tendones se acostumbren.'],
+    ['Movilidad de cadera, espalda alta y tobillo','10 min','Sin apuro, respira hondo.']]},
+  {t:'Descanso',c:'Libre',s:'Recuperar también es entrenar',min:0,ex:[]}
+];
+const RX_PROG=['Usa un peso que te deje 2 repeticiones en reserva al final de cada serie.',
+  'Cuando hagas el tope de repeticiones en todas las series con buena técnica, sube el peso un 2,5 a 5 %.',
+  'Isométricos: suma 5 s por semana hasta 60 s. Después agrega peso o banda más dura.',
+  'Excéntricos (bajadas lentas): 3 a 4 s. Un poco de molestia en el tendón está bien si es 3 de 10 o menos y se pasa al día siguiente. Si no, baja la carga.',
+  'Cada 6 semanas haz una semana suave con la mitad de las series.',
+  'Dolor punzante o en la articulación: para ese ejercicio y consulta a un profesional.',
+  'Come proteína en cada comida, toma tu agua y duerme 7 horas o más: ahí crece el músculo.'];
+let rxView=null;
+function RX(){const h=H();if(!h.rutina)h.rutina={on:null,log:{}};if(!h.rutina.log)h.rutina.log={};return h.rutina}
+const rxOn=()=>RX().on===true;
+const rxDone=k=>RX().log[k]||{};
+function rxActivate(){
+  const r=RX();r.on=true;
+  if(!H().list.some(h=>h.id===RX_HAB))H().list.unshift({id:RX_HAB,name:'Entrenar: rutina del día',area:'deporte',pts:30});
+  save('habits');
+}
+function rxOff(){RX().on=false;H().list=H().list.filter(h=>h.id!==RX_HAB);save('habits')}
+/* Marca o desmarca el hábito Entrenar de hoy según si la rutina quedó completa */
+function rxSync(k,full){
+  const h=H().list.find(x=>x.id===RX_HAB);if(!h)return false;
+  const log=H().log,was=!!(log[k]&&log[k][RX_HAB]);
+  if(full&&!was){log[k]=log[k]||{};log[k][RX_HAB]=h.pts;return true}
+  if(!full&&was){delete log[k][RX_HAB];if(!Object.keys(log[k]).length)delete log[k]}
+  return false;
+}
+function rxInvite(where){
+  return `<div class="card tint rx" style="--c:var(--a-deporte)"><h2>Tu rutina de ejercicio${where==='inicio'?` <button class="x" type="button" data-rxno aria-label="No por ahora">×</button>`:''}</h2>
+  <div style="font-weight:700;font-size:17px;margin:2px 0 4px">Fuerza, músculo, tendones y estética</div>
+  <div class="note">Lunes a sábado, unos 60 minutos, y domingo descanso. Cada día te muestra sus ejercicios y al terminarlos se marca el hábito Entrenar.</div>
+  <button class="btn pri" type="button" data-rxon style="margin-top:10px">Activar mi rutina</button></div>`;
+}
+function rutinaCard(where){
+  if(!rxOn())return where==='habitos'||(projOk&&RX().on===null)?rxInvite(where):'';
+  const k=today(),td=dow(k),d=rxView===null?td:rxView,day=RUTINA[d],isToday=d===td;
+  const mon=addDays(k,-td),done=rxDone(k),n=day.ex.length,c=isToday?day.ex.filter((_,i)=>done[i]).length:0;
+  const habDone=!!doneOn(k)[RX_HAB];
+  const strip=RUTINA.map((x,i)=>{const kk=addDays(mon,i),ok=!!doneOn(kk)[RX_HAB];
+    return `<button type="button" class="${i===d?'on':''}${i===td?' hoy':''}${ok?' ok':''}" data-rxday="${i}" aria-pressed="${i===d}" aria-label="${RX_DIAS[i]}: ${esc(x.t)}${ok?', cumplido':''}"><b>${DIAS[i]}</b><span>${esc(x.c)}</span></button>`}).join('');
+  const head=`<h2>${isToday?'Rutina de hoy':'Rutina del '+RX_DIAS[d].toLowerCase()} ${isToday&&n?`<span class="chip num" style="color:var(--c)">${habDone&&c<n?'Hecho':c+'/'+n}</span>`:''}</h2>
+  <div class="rx-days" role="group" aria-label="Días de la rutina">${strip}</div>
+  <div class="rx-t"><span class="disp">${esc(day.t.toUpperCase())}</span><span class="note">${esc(day.s)}${day.min?' · '+day.min+' min':''}</span></div>`;
+  if(!n){
+    return `<div class="card tint rx" style="--c:var(--a-salud)">${head}
+    <div class="note" style="margin-top:6px">Descanso total o una caminata suave de 30 minutos. Estira 10 minutos si te sientes apretado, duerme bien y toma tu agua. El músculo y los tendones se fortalecen mientras descansas.</div>
+    ${isToday?`<button class="btn ${habDone?'':'pri'}" type="button" data-rxrest style="margin-top:10px">${habDone?'Descanso anotado ✓':'Descansé hoy'}</button>`:''}
+    ${rxFoot(where)}</div>`;
+  }
+  return `<div class="card tint rx" style="--c:var(--a-deporte)">${head}
+  <div class="rx-cal"><b>Calentamiento</b> ${esc(RX_CAL)}</div>
+  <div class="rx-ex">${day.ex.map(([nm,ds,tip],i)=>{const y=isToday&&done[i];
+    return isToday?`<button type="button" class="rx-i${y?' done':''}" data-rx="${i}" aria-pressed="${!!y}"><span class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg></span><span class="grow"><span class="t">${esc(nm)}</span><span class="s"><b class="num">${esc(ds)}</b> · ${esc(tip)}</span></span></button>`
+      :`<div class="rx-i"><span class="n num">${i+1}</span><span class="grow"><span class="t">${esc(nm)}</span><span class="s"><b class="num">${esc(ds)}</b> · ${esc(tip)}</span></span></div>`}).join('')}</div>
+  ${isToday?'':`<button class="btn sm" type="button" data-rxday="${td}" style="margin-top:10px">Volver a hoy</button>`}
+  ${rxFoot(where)}</div>`;
+}
+function rxFoot(where){
+  return `<details class="rx-prog"><summary>Cómo progresar sin lesionarte</summary><ul>${RX_PROG.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>
+  ${where==='habitos'?`<button class="btn sm" type="button" data-rxoff style="margin-top:10px">Quitar la rutina</button>`:''}`;
+}
 function waterCard(){
   const k=today(),w=W(),ml=w.log[k]||0,pct=Math.min(1,ml/w.goal);
   const from=lastWaterPct===null?0:lastWaterPct;
@@ -1028,7 +1150,21 @@ document.addEventListener('click',e=>{
   if(ds.trysc!==undefined){openQuick({amt:12500,where:'LIDER EXPRESS'});return}
   if(ds.arm!==undefined){armNight();return}
   if(ds.testalarm!==undefined){startChallenge('test');return}
-  if(ds.delhab){H().list=H().list.filter(h=>h.id!==ds.delhab);save('habits');render();return}
+  if(ds.rxon!==undefined){rxActivate();rxView=null;toast('Rutina activada. Domingo, descanso.');render();return}
+  if(ds.rxno!==undefined){RX().on=false;save('habits');toast('Puedes activarla cuando quieras en Hábitos');render();return}
+  if(ds.rxoff!==undefined){if(!confirm('¿Quitar la rutina? Tu XP ganada se mantiene.'))return;rxOff();render();return}
+  if(ds.rxday!==undefined){const i=+ds.rxday;rxView=i===dow(today())?null:i;render();return}
+  if(ds.rx!==undefined){const k=today(),day=RUTINA[dow(k)],i=+ds.rx;if(!rxOn()||!day.ex[i])return;
+    const L=RX().log;L[k]=L[k]||{};
+    if(L[k][i]){delete L[k][i];if(!Object.keys(L[k]).length)delete L[k];rxSync(k,false)}
+    else{L[k][i]=1;const full=day.ex.every((_,j)=>L[k][j]);const before=beltFor(totalXP());
+      if(rxSync(k,full)){const after=beltFor(totalXP());toast(after.i>before.i?'¡Nuevo cinturón: '+after.b.n+'!':'Entreno completo. +'+(H().list.find(x=>x.id===RX_HAB)||{pts:30}).pts+' XP');celebrate=()=>FX.rain()}
+      else{const sel=`[data-rx="${i}"] .ck`;celebrate=()=>burstAt(sel)}}
+    save('habits');render();return}
+  if(ds.rxrest!==undefined){const k=today();if(!rxOn()||RUTINA[dow(k)].ex.length)return;
+    if(rxSync(k,!doneOn(k)[RX_HAB]))toast('Descanso anotado. +'+(H().list.find(x=>x.id===RX_HAB)||{pts:30}).pts+' XP');
+    save('habits');render();return}
+  if(ds.delhab){if(ds.delhab===RX_HAB)RX().on=false;H().list=H().list.filter(h=>h.id!==ds.delhab);save('habits');render();return}
   if(ds.type){txType=ds.type;render();return}
   if(ds.mon){const [y,m]=moneyMonth.split('-').map(Number);const d=new Date(y,m-1+(+ds.mon),1);moneyMonth=d.getFullYear()+'-'+pad(d.getMonth()+1);render();return}
   if(ds.deltx){S.money.tx=S.money.tx.filter(x=>x.id!==ds.deltx);save('money');render();return}
