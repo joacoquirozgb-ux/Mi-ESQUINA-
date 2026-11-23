@@ -678,3 +678,6 @@ button.rx-i{cursor:pointer;touch-action:manipulation}
 .rx-prog{margin-top:12px;font-size:14px}
 .rx-prog summary{cursor:pointer;font-weight:700;color:var(--fg)}
 .rx-prog ul{margin:8px 0 0;padding-left:18px;color:var(--muted);display:grid;gap:6px}
+.rx-kb{margin-top:12px;padding:12px;border-radius:16px;background:var(--sunk);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rx-kb .grow{flex:1;min-width:180px}
+.rx-kb label{flex:1;min-width:200px;font-size:13px}

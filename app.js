@@ -75,7 +75,7 @@ function defaults(){
       {id:'h5',name:'Tiempo de calidad con los míos',area:'familia',pts:25},
       {id:'h6',name:'Anotar los gastos del día',area:'empresa',pts:10},
       {id:'h7',name:'Dormir 7 horas o más',area:'salud',pts:15}
-    ],log:{},water:{goal:2000,log:{}},wake:{},rutina:{on:null,log:{}}},
+    ],log:{},water:{goal:2000,log:{}},wake:{},rutina:{on:null,log:{},kb:''}},
     money:{tx:[],budgets:{},merchants:{}},
     claude:{projects:[],subs:[],usage:[],rate:950},
     week:{blocks:[],done:{}},
@@ -107,7 +107,7 @@ function clean(doc,v){
     // Rutina de ejercicio: on true/false (null = aún no decide) y los ejercicios marcados por día, últimos 120 días
     const r0=obj(v.rutina),rlog={},rlim=addDays(today(),-120);
     for(const [k,d] of Object.entries(obj(r0.log)))if(isDate(k)&&k>=rlim){const o={};for(const [i,x] of Object.entries(obj(d)).slice(0,20))if(/^\d{1,2}$/.test(i)&&x)o[i]=1;if(Object.keys(o).length)rlog[k]=o}
-    const rutina={on:r0.on===true?true:r0.on===false?false:null,log:rlog};
+    const rutina={on:r0.on===true?true:r0.on===false?false:null,log:rlog,kb:isDate(r0.kb)?r0.kb:''};
     return {list,log,water:{goal:Math.min(10000,Math.max(500,nn(w.goal)||2000)),log:wl},wake,rutina};
   }
   if(doc==='money'){
@@ -538,71 +538,106 @@ function vSemana(){
 /* ---------- agua ---------- */
 let lastWaterPct=null;
 /* ---------- rutina de ejercicio ----------
-   Lunes a sábado, domingo descanso. Fuerza, músculo y estética, con trabajo para tendones
+   Calistenia de lunes a sábado, domingo descanso. Fuerza, músculo, movilidad y tendones
    (isométricos y bajadas lentas). Cada día completo marca el hábito "Entrenar" y suma su XP. */
 const RX_HAB='rx';
-const RX_CAL='8 min: 2 min de trote o saltos suaves, círculos de hombros, cadera y tobillos, 10 sentadillas sin peso, 10 flexiones de escápula y 1 serie liviana del primer ejercicio.';
+const RX_CAL='8 min: 2 min de trote suave o saltar la cuerda, círculos de cuello, hombros, cadera y tobillos, 10 sentadillas lentas, 10 flexiones de escápula colgado o en plancha y 1 serie fácil del primer ejercicio.';
 const RX_DIAS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+/* Plan base de calistenia: peso corporal, barra de dominadas, paralelas o dos sillas firmes, y una banda elástica */
 const RUTINA=[
-  {t:'Empuje',c:'Empuje',s:'Pecho, hombros y tríceps',min:60,ex:[
-    ['Press de banca con mancuernas o barra','4 × 6–8','Bajada en 3 s. Descansa 2 min.'],
-    ['Press militar de pie con mancuernas','3 × 8–10','Glúteos y abdomen apretados.'],
-    ['Fondos en paralelas o en banco','3 × 8–12','Bajada en 3 s, sin rebotar abajo.'],
-    ['Aperturas inclinadas con mancuernas','3 × 12–15','Codos un poco doblados.'],
-    ['Extensión de tríceps sobre la cabeza','3 × 10–12','Estira completo arriba.'],
+  {t:'Empuje',c:'Empuje',s:'Pecho, hombros y tríceps con tu peso',min:50,ex:[
+    ['Flexiones con bajada lenta','4 × 8–15','Bajada en 3 s. Si llegas a 15 fácil, pasa a flexiones con pies elevados.'],
+    ['Fondos en paralelas o entre dos sillas','4 × 6–12','Bajada en 3 s, hombros lejos de las orejas.'],
+    ['Flexiones en pica (pike)','3 × 6–10','Cadera alta, la cabeza baja entre las manos. Hombros fuertes.'],
+    ['Flexiones diamante','3 × 8–12','Manos juntas, codos pegados. Tríceps.'],
+    ['Plancha alta inclinada hacia adelante (planche lean)','3 × 20–30 s','Isométrico para muñecas, codos y hombros.'],
     ['Rotación externa con banda','3 × 15','Tendones del hombro. Lento y sin dolor.'],
-    ['Plancha','3 × 40 s','Cuerpo recto, respira.']]},
-  {t:'Piernas',c:'Piernas',s:'Cuádriceps, rodillas y tobillos',min:60,ex:[
-    ['Sentadilla goblet o con barra','4 × 6–8','Bajada en 3 s. Descansa 2 min.'],
-    ['Zancada búlgara','3 × 8 por pierna','Rodilla en línea con el pie.'],
-    ['Sentadilla española con banda (isométrica)','4 × 45 s','Tendón de la rótula. Sube 5 s por semana hasta 60 s.'],
-    ['Bajada lenta desde cajón (step-down)','3 × 10 por pierna','Bajada en 4 s, controlando la rodilla.'],
-    ['Elevación de talones de pie','4 × 12','Pausa 2 s arriba y bajada en 3 s. Tendón de Aquiles.'],
+    ['Hollow hold (barquito)','3 × 20–40 s','Espalda baja pegada al suelo.']]},
+  {t:'Piernas',c:'Piernas',s:'Piernas, rodillas y tobillos',min:50,ex:[
+    ['Sentadilla búlgara','4 × 8–12 por pierna','Bajada en 3 s. Agrega mochila con peso cuando sea fácil.'],
+    ['Sentadilla en pared (isométrica)','4 × 45 s','Tendón de la rótula. Suma 5 s por semana hasta 60 s.'],
+    ['Bajada lenta desde un escalón (step-down)','3 × 10 por pierna','Bajada en 4 s, rodilla en línea con el pie.'],
+    ['Sentadilla a una pierna a un banco (pistol al banco)','3 × 5–8 por pierna','Baja controlado hasta sentarte y sube.'],
+    ['Elevación de talones a una pierna','4 × 10–15','Pausa 2 s arriba y bajada en 3 s. Tendón de Aquiles.'],
     ['Elevación de tibiales contra la pared','3 × 20','Protege la canilla y el tobillo.'],
-    ['Dead bug','3 × 10 por lado','Espalda baja pegada al suelo.']]},
-  {t:'Tirón',c:'Tirón',s:'Espalda, bíceps y agarre',min:60,ex:[
-    ['Dominadas (con banda si hace falta)','4 × 5–8','Bajada en 3 s. Descansa 2 min.'],
-    ['Remo con mancuerna a una mano','3 × 8–10 por lado','Lleva el codo hacia la cadera.'],
-    ['Face pull o remo invertido','3 × 12–15','Postura y hombros sanos.'],
-    ['Curl de bíceps con mancuernas','3 × 10–12','Bajada en 3 s.'],
-    ['Curl martillo','3 × 10–12','Antebrazo y codo.'],
+    ['Sentadilla cosaca','2 × 8 por lado','Movilidad de cadera y aductores.']]},
+  {t:'Tirón',c:'Tirón',s:'Espalda, bíceps y agarre',min:50,ex:[
+    ['Dominadas','4 × 4–10','Bajada en 3 s. Con banda si todavía no llegas a 4.'],
+    ['Remo invertido (australianas)','4 × 8–15','Bajo una mesa firme o barra baja. Cuerpo recto.'],
+    ['Dominada supina con bajada lenta','3 × 4–6','Sube como puedas y baja en 5 s. Bíceps y codos.'],
+    ['Mantener arriba de la dominada','3 × 10–20 s','Isométrico con el mentón sobre la barra.'],
     ['Colgarte de la barra','3 × 30–45 s','Agarre y tendones del hombro.'],
-    ['Extensión de muñeca lenta con mancuerna liviana','3 × 15','Bajada en 4 s. Previene el codo de tenista.']]},
-  {t:'Hombros y brazos',c:'Brazos',s:'Estética del tren superior',min:55,ex:[
-    ['Press Arnold','3 × 8–10','Controla todo el recorrido.'],
-    ['Elevaciones laterales','4 × 12–15','Peso liviano, sin balancear.'],
-    ['Elevaciones posteriores (pájaro)','3 × 15','Hombro trasero y postura.'],
-    ['Curl inclinado + extensión de tríceps con banda','3 × 12 cada uno','Superserie, sin descanso entre los dos.'],
-    ['Flexión de muñeca lenta con mancuerna liviana','3 × 15','Bajada en 4 s. Previene el codo de golfista.'],
-    ['Rotación externa isométrica contra la pared','3 × 30 s','Empuja suave, sin dolor.'],
-    ['Rueda abdominal o elevación de piernas colgado','3 × 10','Sin arquear la espalda.']]},
-  {t:'Posterior',c:'Glúteos',s:'Isquiotibiales, glúteos y core',min:60,ex:[
-    ['Peso muerto rumano','4 × 6–8','Bajada en 3 s, espalda neutra. Descansa 2 min.'],
-    ['Hip thrust','3 × 10','Pausa 1 s arriba.'],
-    ['Curl nórdico (ayúdate con las manos)','3 × 4–6','Bajada lo más lenta que puedas. Tendón isquiotibial.'],
+    ['Retracción de escápulas colgado','3 × 10','Brazos rectos, solo bajas y juntas los omóplatos.'],
+    ['Extensión de muñeca lenta con banda','3 × 15','Bajada en 4 s. Previene el codo de tenista.']]},
+  {t:'Movilidad y core',c:'Movilidad',s:'Movilidad, isométricos y abdomen. Día más suave',min:40,ex:[
+    ['Flujo de movilidad: 90/90 de cadera, gato-vaca y apertura torácica','10 min','Sin apuro, respira hondo.'],
+    ['L-sit o rodillas al pecho sostenidas en paralelas','4 × 10–20 s','Abdomen y tríceps en isométrico.'],
     ['Plancha Copenhague','3 × 20 s por lado','Aductores e ingle.'],
-    ['Elevación de talones a una pierna','3 × 10 por pierna','Bajada en 3 s.'],
-    ['Paseo del granjero','4 × 30 m','Pesado, postura alta. Agarre y core.'],
-    ['Pallof press con banda','3 × 10 por lado','Que la banda no te gire.']]},
-  {t:'Atlético',c:'Atlético',s:'Cuerpo completo y movilidad, más liviano',min:45,ex:[
-    ['Saltos al cajón o saltos largos','4 × 4','Calidad, descanso completo, cae suave.'],
-    ['Flexiones con pausa abajo','3 × máximo menos 2','Pausa de 1 s con el pecho cerca del suelo.'],
-    ['Sentadilla goblet con pausa','3 × 10','Pausa de 2 s abajo.'],
-    ['Remo invertido','3 × 10','Cuerpo recto como plancha.'],
-    ['Swing con mancuerna o kettlebell','3 × 15','La fuerza sale de la cadera.'],
+    ['Plancha lateral','3 × 30 s por lado','Cadera alta.'],
+    ['Superman sostenido (arch hold)','3 × 20–30 s','Espalda baja y glúteos.'],
+    ['Puente de glúteo a una pierna sostenido','3 × 30 s por pierna','Isométrico para isquiotibiales.'],
+    ['Estiramiento de hombros y pecho en el marco de la puerta','2 × 45 s','Postura y hombros sueltos.']]},
+  {t:'Cuerpo completo',c:'Completo',s:'Fuerza de todo el cuerpo y cadena posterior',min:50,ex:[
+    ['Curl nórdico (ayúdate con las manos)','3 × 4–6','Bajada lo más lenta que puedas. Tendón isquiotibial.'],
+    ['Flexiones arqueras','3 × 5–8 por lado','Paso hacia la flexión a un brazo.'],
+    ['Dominadas o remo invertido','3 × 6–10','Elige según cómo vengas del miércoles.'],
+    ['Peso muerto a una pierna sin peso','3 × 10 por pierna','Lento, equilibrio y femoral.'],
+    ['Puente de glúteo a una pierna','3 × 12 por pierna','Pausa 1 s arriba.'],
+    ['Fondos con bajada lenta','3 × 6–10','Bajada en 4 s.'],
+    ['Paseo del granjero con mochilas o bidones','3 × 30 m','Agarre y core.']]},
+  {t:'Atlético',c:'Atlético',s:'Explosividad, condición física y movilidad',min:45,ex:[
+    ['Saltos largos o saltos a un cajón','4 × 4','Calidad, cae suave, descanso completo.'],
+    ['Circuito: burpees, escaladores y sentadillas con salto','5 vueltas de 30 s cada uno','30 s de trabajo y 15 s de pausa.'],
+    ['Flexiones explosivas o con palmada','3 × 5','Si no salen, flexiones rápidas.'],
+    ['Saltar la cuerda o sombra de boxeo','4 × 2 min','Mantiene la condición del kickboxing.'],
     ['Circuito de tendones: tibiales, rotación externa y Copenhague','2 vueltas','Liviano, para que los tendones se acostumbren.'],
-    ['Movilidad de cadera, espalda alta y tobillo','10 min','Sin apuro, respira hondo.']]},
+    ['Sentadilla profunda sostenida','3 × 45 s','Talones abajo. Movilidad de tobillo y cadera.'],
+    ['Estiramiento final de cadera, femorales y hombros','10 min','Sin rebotar.']]},
   {t:'Descanso',c:'Libre',s:'Recuperar también es entrenar',min:0,ex:[]}
 ];
-const RX_PROG=['Usa un peso que te deje 2 repeticiones en reserva al final de cada serie.',
-  'Cuando hagas el tope de repeticiones en todas las series con buena técnica, sube el peso un 2,5 a 5 %.',
-  'Isométricos: suma 5 s por semana hasta 60 s. Después agrega peso o banda más dura.',
-  'Excéntricos (bajadas lentas): 3 a 4 s. Un poco de molestia en el tendón está bien si es 3 de 10 o menos y se pasa al día siguiente. Si no, baja la carga.',
+/* Semanas con kickboxing (u otro deporte) lunes, miércoles y viernes: esos días solo un complemento corto,
+   y el jueves junta empuje y tirón para no perder fuerza del tren superior */
+const RX_KB={
+  0:{t:'Kickboxing',c:'Kick',s:'Hoy tienes clase. Solo 20 min de complemento, antes o después',min:20,kb:1,ex:[
+    ['Movilidad de cadera 90/90 y tobillos','5 min','Ideal antes de la clase.'],
+    ['Sentadilla en pared (isométrica)','3 × 45 s','Tendón de la rótula.'],
+    ['Elevación de talones lenta','3 × 12','Bajada en 3 s. Tendón de Aquiles.'],
+    ['Colgarte de la barra','3 × 30 s','Hombros y agarre.'],
+    ['Rotación externa con banda','2 × 15','Hombros sanos para golpear.']]},
+  2:{t:'Kickboxing',c:'Kick',s:'Hoy tienes clase. Solo 20 min de complemento, antes o después',min:20,kb:1,ex:[
+    ['Movilidad de hombros y espalda alta','5 min','Círculos, gato-vaca y apertura torácica.'],
+    ['Mantener arriba de la dominada','3 × 15 s','Isométrico de espalda y bíceps.'],
+    ['Elevación de tibiales contra la pared','2 × 20','Canillas fuertes para patear.'],
+    ['Plancha Copenhague','2 × 20 s por lado','Aductores e ingle.'],
+    ['Flexión y extensión de muñeca lenta con banda','2 × 15 cada una','Muñecas y codos para los golpes.']]},
+  4:{t:'Kickboxing',c:'Kick',s:'Hoy tienes clase. Solo 20 min de complemento, antes o después',min:20,kb:1,ex:[
+    ['Movilidad de tobillo y cadera','5 min','Antes de la clase.'],
+    ['Puente de glúteo a una pierna sostenido','3 × 30 s por pierna','Isquiotibiales y glúteos.'],
+    ['Hollow hold (barquito)','3 × 30 s','Abdomen firme para recibir golpes.'],
+    ['Plancha lateral','2 × 30 s por lado','Cadera alta.'],
+    ['Estiramiento de cuello, hombros y cadera','5 min','Después de la clase, suave.']]},
+  3:{t:'Tren superior',c:'Superior',s:'Empuje y tirón juntos mientras hay kickboxing',min:50,ex:[
+    ['Dominadas','4 × 4–10','Bajada en 3 s.'],
+    ['Flexiones con bajada lenta','4 × 8–15','Bajada en 3 s.'],
+    ['Remo invertido (australianas)','3 × 8–15','Cuerpo recto.'],
+    ['Fondos en paralelas o entre dos sillas','3 × 6–12','Bajada en 3 s.'],
+    ['Flexiones en pica (pike)','3 × 6–10','Hombros fuertes.'],
+    ['Colgarte de la barra','2 × 30–45 s','Agarre y hombros.'],
+    ['L-sit o rodillas al pecho sostenidas','3 × 10–20 s','Abdomen en isométrico.']]}
+};
+const RX_PROG=['Termina cada serie con 1 o 2 repeticiones de reserva, con buena técnica.',
+  'Cuando hagas el tope de repeticiones en todas las series, pasa a una versión más difícil: pies elevados, más lento, una pierna o una mochila con peso.',
+  'Isométricos: suma 5 s por semana hasta 60 s. Después usa una versión más difícil.',
+  'Bajadas lentas de 3 a 5 s: así se fortalecen los tendones. Un poco de molestia está bien si es 3 de 10 o menos y se pasa al día siguiente. Si no, baja la dificultad.',
+  'Con kickboxing en la semana, los días de clase haz solo el complemento. No sumes la rutina completa encima.',
   'Cada 6 semanas haz una semana suave con la mitad de las series.',
   'Dolor punzante o en la articulación: para ese ejercicio y consulta a un profesional.',
   'Come proteína en cada comida, toma tu agua y duerme 7 horas o más: ahí crece el músculo.'];
+/* Plan de un día concreto: con kickboxing vigente (hasta la fecha que elegiste) cambian lunes, miércoles, viernes y jueves */
+const rxKbOn=k=>{const h=RX().kb;return isDate(h)&&k<=h};
+const rxPlan=k=>{const d=dow(k);return rxKbOn(k)&&RX_KB[d]||RUTINA[d]};
 let rxView=null;
-function RX(){const h=H();if(!h.rutina)h.rutina={on:null,log:{}};if(!h.rutina.log)h.rutina.log={};return h.rutina}
+function RX(){const h=H();if(!h.rutina)h.rutina={on:null,log:{},kb:''};if(!h.rutina.log)h.rutina.log={};return h.rutina}
 const rxOn=()=>RX().on===true;
 const rxDone=k=>RX().log[k]||{};
 function rxActivate(){
@@ -627,10 +662,10 @@ function rxInvite(where){
 }
 function rutinaCard(where){
   if(!rxOn())return where==='habitos'||(projOk&&RX().on===null)?rxInvite(where):'';
-  const k=today(),td=dow(k),d=rxView===null?td:rxView,day=RUTINA[d],isToday=d===td;
-  const mon=addDays(k,-td),done=rxDone(k),n=day.ex.length,c=isToday?day.ex.filter((_,i)=>done[i]).length:0;
+  const k=today(),td=dow(k),d=rxView===null?td:rxView,isToday=d===td;
+  const mon=addDays(k,-td),day=rxPlan(addDays(mon,d)),done=rxDone(k),n=day.ex.length,c=isToday?day.ex.filter((_,i)=>done[i]).length:0;
   const habDone=!!doneOn(k)[RX_HAB];
-  const strip=RUTINA.map((x,i)=>{const kk=addDays(mon,i),ok=!!doneOn(kk)[RX_HAB];
+  const strip=RUTINA.map((_,i)=>{const kk=addDays(mon,i),x=rxPlan(kk),ok=!!doneOn(kk)[RX_HAB];
     return `<button type="button" class="${i===d?'on':''}${i===td?' hoy':''}${ok?' ok':''}" data-rxday="${i}" aria-pressed="${i===d}" aria-label="${RX_DIAS[i]}: ${esc(x.t)}${ok?', cumplido':''}"><b>${DIAS[i]}</b><span>${esc(x.c)}</span></button>`}).join('');
   const head=`<h2>${isToday?'Rutina de hoy':'Rutina del '+RX_DIAS[d].toLowerCase()} ${isToday&&n?`<span class="chip num" style="color:var(--c)">${habDone&&c<n?'Hecho':c+'/'+n}</span>`:''}</h2>
   <div class="rx-days" role="group" aria-label="Días de la rutina">${strip}</div>
@@ -642,7 +677,7 @@ function rutinaCard(where){
     ${rxFoot(where)}</div>`;
   }
   return `<div class="card tint rx" style="--c:var(--a-deporte)">${head}
-  <div class="rx-cal"><b>Calentamiento</b> ${esc(RX_CAL)}</div>
+  <div class="rx-cal">${day.kb?'<b>Día de clase</b> No sumes la rutina completa: el kickboxing ya es tu entrenamiento fuerte de hoy. Esto cuida tendones y movilidad.':'<b>Calentamiento</b> '+esc(RX_CAL)}</div>
   <div class="rx-ex">${day.ex.map(([nm,ds,tip],i)=>{const y=isToday&&done[i];
     return isToday?`<button type="button" class="rx-i${y?' done':''}" data-rx="${i}" aria-pressed="${!!y}"><span class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg></span><span class="grow"><span class="t">${esc(nm)}</span><span class="s"><b class="num">${esc(ds)}</b> · ${esc(tip)}</span></span></button>`
       :`<div class="rx-i"><span class="n num">${i+1}</span><span class="grow"><span class="t">${esc(nm)}</span><span class="s"><b class="num">${esc(ds)}</b> · ${esc(tip)}</span></span></div>`}).join('')}</div>
@@ -651,7 +686,13 @@ function rutinaCard(where){
 }
 function rxFoot(where){
   return `<details class="rx-prog"><summary>Cómo progresar sin lesionarte</summary><ul>${RX_PROG.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></details>
-  ${where==='habitos'?`<button class="btn sm" type="button" data-rxoff style="margin-top:10px">Quitar la rutina</button>`:''}`;
+  ${where==='habitos'?rxKbForm()+`<button class="btn sm" type="button" data-rxoff style="margin-top:10px">Quitar la rutina</button>`:''}`;
+}
+function rxKbForm(){
+  const h=RX().kb,on=isDate(h)&&today()<=h;
+  if(on)return `<div class="rx-kb"><div class="grow"><b>Kickboxing lunes, miércoles y viernes</b><div class="note">Hasta el ${fmtDate(h)}. Esos días solo tienes un complemento de 20 min y el jueves junta empuje y tirón.</div></div><button class="btn sm" type="button" data-rxkboff>Ya no voy</button></div>`;
+  const [y,m]=today().split('-').map(Number),fin=dkey(new Date(y,m,0));
+  return `<form class="row rx-kb" id="f-rxkb"><label>¿Haces kickboxing u otro deporte lunes, miércoles y viernes? Hasta el<input id="rxkb" type="date" value="${fin}" min="${today()}" required></label><button class="btn sm" type="submit">Ajustar esos días</button></form>`;
 }
 function waterCard(){
   const k=today(),w=W(),ml=w.log[k]||0,pct=Math.min(1,ml/w.goal);
@@ -1153,15 +1194,16 @@ document.addEventListener('click',e=>{
   if(ds.rxon!==undefined){rxActivate();rxView=null;toast('Rutina activada. Domingo, descanso.');render();return}
   if(ds.rxno!==undefined){RX().on=false;save('habits');toast('Puedes activarla cuando quieras en Hábitos');render();return}
   if(ds.rxoff!==undefined){if(!confirm('¿Quitar la rutina? Tu XP ganada se mantiene.'))return;rxOff();render();return}
+  if(ds.rxkboff!==undefined){RX().kb='';save('habits');toast('Listo: vuelves a la rutina completa');render();return}
   if(ds.rxday!==undefined){const i=+ds.rxday;rxView=i===dow(today())?null:i;render();return}
-  if(ds.rx!==undefined){const k=today(),day=RUTINA[dow(k)],i=+ds.rx;if(!rxOn()||!day.ex[i])return;
+  if(ds.rx!==undefined){const k=today(),day=rxPlan(k),i=+ds.rx;if(!rxOn()||!day.ex[i])return;
     const L=RX().log;L[k]=L[k]||{};
     if(L[k][i]){delete L[k][i];if(!Object.keys(L[k]).length)delete L[k];rxSync(k,false)}
     else{L[k][i]=1;const full=day.ex.every((_,j)=>L[k][j]);const before=beltFor(totalXP());
       if(rxSync(k,full)){const after=beltFor(totalXP());toast(after.i>before.i?'¡Nuevo cinturón: '+after.b.n+'!':'Entreno completo. +'+(H().list.find(x=>x.id===RX_HAB)||{pts:30}).pts+' XP');celebrate=()=>FX.rain()}
       else{const sel=`[data-rx="${i}"] .ck`;celebrate=()=>burstAt(sel)}}
     save('habits');render();return}
-  if(ds.rxrest!==undefined){const k=today();if(!rxOn()||RUTINA[dow(k)].ex.length)return;
+  if(ds.rxrest!==undefined){const k=today();if(!rxOn()||rxPlan(k).ex.length)return;
     if(rxSync(k,!doneOn(k)[RX_HAB]))toast('Descanso anotado. +'+(H().list.find(x=>x.id===RX_HAB)||{pts:30}).pts+' XP');
     save('habits');render();return}
   if(ds.delhab){if(ds.delhab===RX_HAB)RX().on=false;H().list=H().list.filter(h=>h.id!==ds.delhab);save('habits');render();return}
@@ -1186,6 +1228,7 @@ document.addEventListener('submit',e=>{
   if(id.startsWith('f-cb'))return; // formularios de Cobros del panel del dueño
   if(id==='f-quick'){const amt=num(v('q-amt'));if(!(amt>0))return toast('Escribe el monto');const note=v('q-note').trim().slice(0,120);S.money.tx.push({id:uid(),type:'gasto',amt,cat:qCat,date:today(),note});if(note){S.money.merchants=S.money.merchants||{};S.money.merchants[mKey(note)]=qCat}save('money');closeQuick();toast('Gasto anotado: '+clp(amt));render();return}
   if(id==='f-alarm'){AL().time=isHM(v('al-time'))?v('al-time'):'06:30';AL().ex=v('al-ex');save('meta');toast('Despertador a las '+AL().time)}
+  if(id==='f-rxkb'){const d=v('rxkb');if(!isDate(d)||d<today())return toast('Elige una fecha de hoy en adelante');RX().kb=d;rxView=null;save('habits');toast('Lunes, miércoles y viernes: complemento corto hasta el '+fmtDate(d))}
   if(id==='f-water'){const g=num(v('w-goal'));if(g>=.5&&g<=10){W().goal=Math.round(g*1000);save('habits');toast('Meta guardada')}else return toast('Escribe una meta entre 0,5 y 10 litros')}
   if(id==='f-hab'){const n=v('hab-name').trim();if(!n)return toast('Escribe el hábito');H().list.push({id:uid(),name:n.slice(0,120),area:v('hab-area'),pts:+v('hab-pts')||20});save('habits');toast('Hábito agregado')}
   if(id==='f-tx'){const amt=num(v('tx-amt'));if(!(amt>0))return toast('Escribe un monto');if(!isDate(v('tx-date')))return toast('Elige la fecha');S.money.tx.push({id:uid(),type:txType,amt,cat:v('tx-cat'),date:v('tx-date'),note:v('tx-note').trim().slice(0,120)});moneyMonth=monthKey(v('tx-date'));save('money');toast(txType==='gasto'?'Gasto anotado':'Ingreso anotado')}
